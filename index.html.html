@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<!-- saved from url=(0064)https://agent-6ae03f0b1c1a85a7424c2ccf-%2Dtaiwanuav.netlify.app/ -->
+<html lang="zh-Hant"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>無人機供應鏈臺灣島</title>
+<link rel="preconnect" href="https://fonts.googleapis.com/">
+<link rel="stylesheet" href="./index.html_files/css2">
+<style>
+/* Layout: aeronautical-chart plate — a 3D island stage beside an index panel (stacks on phones) */
+:root{
+  --bg:#E9EEF0; --surface:#F7F9F9; --ink:#14232B; --muted:#5A6B73; --line:#C9D4D8;
+  --accent:#0F5E7A; --sea:#CFDDE3; --grid:#9FB5BF; --land-lo:#B9C6A6; --land-hi:#7E8F78; --flow:#14232B;
+  --f-display:"Noto Serif TC","Songti TC","PMingLiU",serif;
+  --f-body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0D161C; --surface:#131F27; --ink:#E3ECEF; --muted:#8FA2AB; --line:#25353F;
+  --accent:#6FC3DF; --sea:#0F2430; --grid:#2A4654; --land-lo:#4D5E48; --land-hi:#2E3A2C; --flow:#E3ECEF; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0D161C; --surface:#131F27; --ink:#E3ECEF; --muted:#8FA2AB; --line:#25353F;
+  --accent:#6FC3DF; --sea:#0F2430; --grid:#2A4654; --land-lo:#4D5E48; --land-hi:#2E3A2C; --flow:#E3ECEF; color-scheme:dark}
+
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.app{min-height:100%;display:flex;flex-direction:column;gap:12px;padding-block:14px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:8px 24px}
+h1{font-family:var(--f-display);font-weight:900;font-size:clamp(22px,3.2vw,30px);line-height:1.2;margin:0;letter-spacing:.02em;text-wrap:balance}
+.sub{margin:2px 0 0;color:var(--muted)}
+.coord{font-family:var(--f-mono);font-size:12px;color:var(--muted);letter-spacing:.04em;white-space:nowrap}
+main{display:grid;grid-template-rows:58svh auto;gap:12px;flex:1;min-height:0}
+.stage{position:relative;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--sea);min-height:0}
+#gl{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+#gl.drag{cursor:grabbing}
+.labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.lab{position:absolute;transform:translate(-50%,-100%);white-space:nowrap;font-size:12px;line-height:1.3;
+  padding:2px 7px;border-radius:3px;background:var(--surface);color:var(--ink);border:1px solid var(--line);
+  box-shadow:0 1px 3px rgba(0,0,0,.12);transition:opacity .2s}
+.lab.dist{pointer-events:auto;cursor:pointer;font-weight:700;display:flex;align-items:center;gap:6px;padding:3px 8px}
+.lab.dist i{width:8px;height:8px;border-radius:2px;display:inline-block}
+.lab.dist small{font-family:var(--f-mono);font-weight:400;color:var(--muted)}
+.lab.co{font-size:11.5px}
+.lab.co.star{border-color:currentColor}
+.tools{position:absolute;top:10px;left:10px;display:flex;gap:6px;flex-wrap:wrap}
+.btn{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--surface);color:var(--ink);
+  padding:5px 11px;border-radius:4px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn:focus-visible,.tab:focus-visible,.seg:focus-visible,.co-item:focus-visible,.lab.dist:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn[aria-pressed="true"]{background:var(--accent);color:var(--surface);border-color:var(--accent)}
+.seg-toggle{display:inline-flex}
+.seg-toggle .btn{border-radius:0}.seg-toggle .btn+.btn{margin-left:-1px}
+.seg-toggle .btn:first-child{border-radius:4px 0 0 4px}.seg-toggle .btn:last-child{border-radius:0 4px 4px 0}
+.lab.city{pointer-events:auto;cursor:pointer;font-family:var(--f-display);font-weight:900;font-size:13px;display:flex;gap:5px;align-items:baseline;padding:2px 8px;transform:translate(-50%,-50%)}
+.lab.city small{font-family:var(--f-mono);font-weight:400;font-size:11px;color:var(--accent)}
+.lab.city.empty{background:none;border-color:transparent;box-shadow:none;color:var(--muted);font-size:12px;cursor:default}
+.lab.city:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.hint{position:absolute;right:10px;bottom:10px;font-size:11.5px;color:var(--muted);background:var(--surface);
+  padding:3px 8px;border-radius:3px;border:1px solid var(--line)}
+.card{position:absolute;left:10px;bottom:10px;width:min(340px,calc(100% - 20px));background:var(--surface);
+  border:1px solid var(--line);border-radius:6px;padding:14px 16px;box-shadow:0 6px 24px rgba(0,0,0,.16)}
+.card .x{position:absolute;top:8px;right:8px;border:0;background:none;color:var(--muted);font-size:18px;cursor:pointer;line-height:1;padding:4px}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;color:var(--muted)}
+.chip i{width:9px;height:9px;border-radius:2px}
+.card h2{font-family:var(--f-display);font-size:20px;margin:4px 0 0;line-height:1.3}
+.card .en{font-family:var(--f-mono);font-size:11.5px;color:var(--muted);margin:0 0 8px}
+.card p{margin:6px 0}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:13px;margin-top:8px}
+.kv dt{color:var(--muted)} .kv dd{margin:0}
+.rel{display:flex;flex-wrap:wrap;gap:4px}
+.rel button{font:inherit;font-size:12px;border:1px solid var(--line);background:none;color:var(--ink);border-radius:3px;padding:0 6px;cursor:pointer}
+.card a{color:var(--accent)}
+.loading{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--f-display);font-size:16px;color:var(--muted);pointer-events:none;transition:opacity .6s}
+
+aside{background:var(--surface);border:1px solid var(--line);border-radius:6px;display:flex;flex-direction:column;min-height:0}
+.tabs{display:flex;border-bottom:1px solid var(--line)}
+.tab{flex:1;font:inherit;font-weight:500;background:none;border:0;border-bottom:2px solid transparent;color:var(--muted);padding:10px 0;cursor:pointer}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.pane{padding:14px 16px;overflow:auto;min-height:0}
+.pane h3{font-family:var(--f-display);font-size:15px;margin:0 0 8px}
+.note{font-size:12px;color:var(--muted);margin:10px 0 0}
+.seg{display:grid;grid-template-columns:12px 1fr auto;gap:2px 10px;align-items:baseline;width:100%;text-align:left;font:inherit;color:inherit;
+  background:none;border:0;border-bottom:1px solid var(--line);padding:10px 4px;cursor:pointer;border-radius:0}
+.seg:hover,.seg.on{background:color-mix(in srgb,var(--accent) 8%,transparent)}
+.seg i{width:12px;height:12px;border-radius:3px;align-self:center}
+.seg b{font-weight:700}
+.seg .n{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.seg .d{grid-column:2/4;font-size:12.5px;color:var(--muted)}
+.grp{margin:0 0 14px}
+.grp h4{display:flex;align-items:center;gap:6px;font-size:12px;letter-spacing:.06em;color:var(--muted);margin:0 0 4px;font-weight:500}
+.grp h4 i{width:8px;height:8px;border-radius:2px}
+.co-item{display:flex;justify-content:space-between;gap:10px;width:100%;font:inherit;color:inherit;text-align:left;background:none;border:0;padding:5px 4px;cursor:pointer;border-radius:3px}
+.co-item:hover{background:color-mix(in srgb,var(--accent) 8%,transparent)}
+.co-item span:last-child{color:var(--muted);font-size:12.5px;white-space:nowrap}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px;margin:0 0 16px}
+.stat b{display:block;font-family:var(--f-mono);font-size:20px;font-weight:500;font-variant-numeric:tabular-nums;line-height:1.3}
+.stat span{font-size:12.5px;color:var(--muted)}
+.bars{display:grid;grid-template-columns:44px 1fr;gap:6px 10px;align-items:center;margin:4px 0 6px;font-variant-numeric:tabular-nums}
+.bars .y{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.bars .b{height:18px;background:var(--accent);border-radius:2px;position:relative;min-width:2px}
+.bars .b span{position:absolute;left:calc(100% + 6px);top:50%;transform:translateY(-50%);font-family:var(--f-mono);font-size:12px;white-space:nowrap}
+.affs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px}
+.affs .btn{font-size:12.5px;padding:3px 9px}
+.bdgs{display:inline-flex;flex-wrap:wrap;gap:3px;margin-left:6px;vertical-align:1px}
+.card .bdgs{margin:0 0 6px}
+.bdg{font-style:normal;font-size:10.5px;line-height:1.5;padding:0 5px;border-radius:2px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.bdg-td{border-color:var(--accent);color:var(--accent)}
+.co-item>span:first-child{min-width:0}
+.src{padding-left:18px;margin:6px 0 0;font-size:12.5px}
+.src a{color:var(--accent)}
+.lab.co.all{font-size:10.5px;padding:1px 5px;box-shadow:none}
+.pane h3 .btn{float:right;font-family:var(--f-body);font-size:12px;padding:1px 8px}
+.pane h3 small{font-family:var(--f-body);font-weight:400;font-size:12px;color:var(--muted);margin-left:6px}
+/* story tour */
+.story{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);width:min(520px,calc(100% - 20px));background:var(--surface);
+  border:1px solid var(--line);border-radius:6px;box-shadow:0 6px 24px rgba(0,0,0,.18);padding:12px 16px 10px}
+.story .k{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;color:var(--accent)}
+.story h2{font-family:var(--f-display);font-size:18px;line-height:1.3;margin:2px 0 4px}
+.story p{margin:0 0 4px}
+.story .who{font-size:12.5px;color:var(--muted)}
+.story .bar{height:3px;background:var(--line);border-radius:2px;margin:8px 0;overflow:hidden}
+.story .bar i{display:block;height:100%;width:0;background:var(--accent)}
+.story .ctl{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
+.stage.storying .hint{display:none}
+.stage.storying .card{top:56px;bottom:auto}
+/* timeline */
+.timebar{position:absolute;left:10px;right:10px;bottom:10px;display:grid;grid-template-columns:auto auto 1fr;gap:4px 12px;align-items:center;
+  background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:8px 12px;box-shadow:0 6px 24px rgba(0,0,0,.14)}
+.timebar .yr{font-family:var(--f-mono);font-size:22px;font-weight:500;font-variant-numeric:tabular-nums;line-height:1.2}
+.timebar input{width:100%;accent-color:var(--accent)}
+.timebar .tk{grid-column:1/-1;font-size:12.5px;color:var(--muted);min-height:1.6em}
+.timebar .tk b{color:var(--ink);font-weight:500}
+.stage[data-view="time"] .hint{display:none}
+.stage[data-view="time"] .card{bottom:100px}
+/* list view */
+.listview{position:absolute;inset:0;background:var(--surface);overflow:auto;padding:56px 16px 16px}
+.lv-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 10px}
+.lv-bar input,.lv-bar select{font:inherit;font-size:13px;padding:5px 10px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink)}
+.lv-bar input{flex:1 1 180px;min-width:0}
+.lv-bar .n{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.lv-chips{display:flex;flex-wrap:wrap;gap:5px;margin:0 0 12px}
+.lv-chips .btn{font-size:12px;padding:2px 8px;display:inline-flex;align-items:center;gap:5px}
+.lv-chips .btn i{width:8px;height:8px;border-radius:2px}
+.lv-chips .btn[aria-pressed="true"] i{outline:1px solid var(--surface)}
+.lv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.lv-item{display:flex;flex-direction:column;gap:2px;text-align:left;font:inherit;color:inherit;background:var(--bg);border:1px solid var(--line);
+  border-left:4px solid var(--c);border-radius:4px;padding:10px 12px;cursor:pointer}
+.lv-item:hover{border-color:var(--c)}
+.lv-item:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.lv-item small{font-size:12px;color:var(--muted)}
+.lv-item span{font-size:12.5px}
+.stage[data-view="list"] .isl{display:none!important}
+/* onboarding */
+.guide{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:16px;background:rgba(10,20,26,.45)}
+.guide .box{width:100%;max-width:420px;background:var(--surface);color:var(--ink);border-radius:8px;padding:22px 24px 18px;box-shadow:0 12px 40px rgba(0,0,0,.3)}
+.guide .k{font-family:var(--f-mono);font-size:12px;letter-spacing:.1em;color:var(--accent)}
+.guide h2{font-family:var(--f-display);font-size:22px;line-height:1.3;margin:4px 0 8px}
+.guide p{margin:0}
+.guide .dots{display:flex;gap:5px;margin:16px 0 14px}
+.guide .dots i{width:6px;height:6px;border-radius:3px;background:var(--line);transition:width .25s}
+.guide .dots i.on{width:18px;background:var(--accent)}
+.guide .ctl{display:flex;justify-content:space-between;gap:8px}
+.guide .ctl span{display:flex;gap:6px}
+.btn.pri{background:var(--accent);color:var(--surface);border-color:var(--accent)}
+@media (min-width:900px){
+  .app{height:100%}
+  main{grid-template-rows:none;grid-template-columns:minmax(0,1fr) 370px}
+  .stage{height:auto}
+}
+@media (prefers-reduced-motion:reduce){.lab,.loading,.guide .dots i{transition:none}}
+</style>
+<style>*,*::before,*::after{box-sizing:border-box}body{margin:0}img{max-width:100%}[hidden]{display:none!important}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}</style>
+</head>
+<body>
+
+<div class="app">
+  <header>
+    <div>
+      <h1>無人機供應鏈臺灣島</h1>
+      <p class="sub" id="sub">10 個供應鏈環節、70 家代表廠商與機構，依實際所在地擺在臺灣地圖上，顏色代表供應鏈環節。點選建築看介紹。</p>
+    </div>
+    <div class="coord">N 21.9°–25.3° · E 120.0°–122.0°<br><span id="dataNote">資料：Google 試算表 · 2026/10/27 14:37:54 讀取</span></div>
+  </header>
+  <main>
+    <section class="stage" id="stage" aria-label="可互動的 3D 臺灣島" data-view="island">
+      <canvas id="gl" width="1297" height="687"></canvas>
+      <div class="labels" id="labels"><button class="lab dist" type="button" style="left: 401.899px; top: 60.8517px; opacity: 0; pointer-events: none;"><i style="background:#5B6CF0"></i>晶片、飛控與電子<small>6</small></button><button class="lab dist" type="button" style="left: 385.775px; top: 94.1052px; opacity: 0; pointer-events: none;"><i style="background:#1597B2"></i>通訊、雷達與導航<small>5</small></button><button class="lab dist" type="button" style="left: 384.02px; top: 111.859px; opacity: 0; pointer-events: none;"><i style="background:#D89A00"></i>電源與電池<small>3</small></button><button class="lab dist" type="button" style="left: 378.06px; top: 133.295px; opacity: 0; pointer-events: none;"><i style="background:#D64545"></i>動力系統<small>2</small></button><button class="lab dist" type="button" style="left: 378.845px; top: 148.706px; opacity: 0; pointer-events: none;"><i style="background:#8A57D1"></i>光學與酬載<small>3</small></button><button class="lab dist" type="button" style="left: 383.887px; top: 165.225px; opacity: 0; pointer-events: none;"><i style="background:#6E8F33"></i>機構、複材與製造<small>6</small></button><button class="lab dist" type="button" style="left: 386.178px; top: 197.559px; opacity: 0; pointer-events: none;"><i style="background:#E0681A"></i>整機與系統整合<small>16</small></button><button class="lab dist" type="button" style="left: 399.642px; top: 237.292px; opacity: 0; pointer-events: none;"><i style="background:#C2457E"></i>應用服務與軟體<small>13</small></button><button class="lab dist" type="button" style="left: 417.543px; top: 263.151px; opacity: 0; pointer-events: none;"><i style="background:#22946A"></i>研發、法人與學界<small>8</small></button><button class="lab dist" type="button" style="left: 430.828px; top: 295.117px; opacity: 0; pointer-events: none;"><i style="background:#56707C"></i>政府與產業組織<small>8</small></button><div class="lab city empty" style="left: 431.519px; top: 63.7489px; opacity: 0.55;">基隆</div><button class="lab city" type="button" style="left: 418.609px; top: 75.2672px; opacity: 1;">台北<small>4</small></button><button class="lab city" type="button" style="left: 394.738px; top: 93.6511px; opacity: 1;">桃園<small>7</small></button><button class="lab city" type="button" style="left: 377.934px; top: 114.475px; opacity: 1;">新竹<small>10</small></button><button class="lab city" type="button" style="left: 374.803px; top: 139.353px; opacity: 1;">苗栗<small>1</small></button><button class="lab city" type="button" style="left: 376.723px; top: 177.291px; opacity: 1;">台中<small>8</small></button><button class="lab city" type="button" style="left: 365.181px; top: 193.275px; opacity: 1;">彰化<small>2</small></button><div class="lab city empty" style="left: 410.139px; top: 192.155px; opacity: 0.55;">南投</div><button class="lab city" type="button" style="left: 376.649px; top: 223.859px; opacity: 1;">雲林<small>8</small></button><button class="lab city" type="button" style="left: 383.09px; top: 239.395px; opacity: 1;">嘉義<small>19</small></button><button class="lab city" type="button" style="left: 387.744px; top: 286.263px; opacity: 1;">台南<small>3</small></button><button class="lab city" type="button" style="left: 410.661px; top: 308.818px; opacity: 1;">高雄<small>3</small></button><div class="lab city empty" style="left: 437.126px; top: 311.299px; opacity: 0.55;">屏東</div><div class="lab city empty" style="left: 449.082px; top: 99.0992px; opacity: 0.55;">宜蘭</div><div class="lab city empty" style="left: 469.468px; top: 176.027px; opacity: 0.55;">花蓮</div><div class="lab city empty" style="left: 477.801px; top: 272.091px; opacity: 0.55;">台東</div><button class="lab city" type="button" style="left: 279.43px; top: 239.518px; opacity: 1;">地點待確認<small>5</small></button><div class="lab co" style="opacity: 0;">聯發科</div><div class="lab co" style="opacity: 0;">聯詠</div><div class="lab co" style="opacity: 0;">新唐</div><div class="lab co" style="opacity: 0;">盛群</div><div class="lab co" style="opacity: 0;">英諾飛科技</div><div class="lab co" style="opacity: 0;">銘旺科技</div><div class="lab co" style="opacity: 0;">啟碁</div><div class="lab co" style="opacity: 0;">佳邦</div><div class="lab co" style="opacity: 0;">倢通科技</div><div class="lab co" style="opacity: 0;">和迪科技</div><div class="lab co" style="opacity: 0;">創未來科技</div><div class="lab co star" style="color: rgb(216, 154, 0); opacity: 1; left: 389.915px; top: 72.5041px;">應能科技 ★</div><div class="lab co" style="opacity: 0;">順達</div><div class="lab co" style="opacity: 0;">新普</div><div class="lab co" style="opacity: 0;">東元</div><div class="lab co" style="opacity: 0;">豐兆航太</div><div class="lab co" style="opacity: 0;">亞光</div><div class="lab co" style="opacity: 0;">中揚光</div><div class="lab co" style="opacity: 0;">源奇科技</div><div class="lab co" style="opacity: 0;">碳基科技</div><div class="lab co" style="opacity: 0;">拓凱</div><div class="lab co" style="opacity: 0;">長榮航太</div><div class="lab co" style="opacity: 0;">亞航</div><div class="lab co" style="opacity: 0;">樹德企業</div><div class="lab co" style="opacity: 0;">海威工業</div><div class="lab co" style="opacity: 0;">雷虎科技</div><div class="lab co" style="opacity: 0;">中光電智能機器人</div><div class="lab co" style="opacity: 0;">經緯航太</div><div class="lab co" style="opacity: 0;">神耀科技</div><div class="lab co" style="opacity: 0;">漢翔航空</div><div class="lab co" style="opacity: 0;">佳世達集團</div><div class="lab co" style="opacity: 0;">坤暐科技</div><div class="lab co" style="opacity: 0;">璿元科技</div><div class="lab co" style="opacity: 0;">智飛科技</div><div class="lab co" style="opacity: 0;">新樂飛無人機</div><div class="lab co" style="opacity: 0;">原資系統整合</div><div class="lab co" style="opacity: 0;">泰世科技</div><div class="lab co" style="opacity: 0;">航見科技</div><div class="lab co" style="opacity: 0;">艾知科技</div><div class="lab co" style="opacity: 0;">蜘蛛視覺感測</div><div class="lab co" style="opacity: 0;">環球防衛科技</div><div class="lab co" style="opacity: 0;">翔安飛服</div><div class="lab co" style="opacity: 0;">翔隆航太</div><div class="lab co" style="opacity: 0;">彥宣智能科技</div><div class="lab co" style="opacity: 0;">臺灣希望創新</div><div class="lab co" style="opacity: 0;">誼卡科技顧問</div><div class="lab co" style="opacity: 0;">藏識科技</div><div class="lab co" style="opacity: 0;">台灣數位光訊</div><div class="lab co" style="opacity: 0;">自強工程顧問</div><div class="lab co" style="opacity: 0;">傑群</div><div class="lab co" style="opacity: 0;">富蘭登科技</div><div class="lab co" style="opacity: 0;">艾斯特物聯科技</div><div class="lab co" style="opacity: 0;">新易智整合行銷</div><div class="lab co" style="opacity: 0;">皓準科技</div><div class="lab co" style="opacity: 0;">工研院</div><div class="lab co" style="opacity: 0;">中科院</div><div class="lab co" style="opacity: 0;">金屬中心</div><div class="lab co" style="opacity: 0;">電信技術中心</div><div class="lab co" style="opacity: 0;">台灣經濟研究院</div><div class="lab co" style="opacity: 0;">國立中正大學</div><div class="lab co" style="opacity: 0;">國立虎尾科技大學</div><div class="lab co" style="opacity: 0;">弘光科技大學</div><div class="lab co" style="opacity: 0;">亞洲無人機AI創新應用研發中心</div><div class="lab co" style="opacity: 0;">經濟部無人機產業發展專案辦公室</div><div class="lab co" style="opacity: 0;">交通部民用航空局</div><div class="lab co" style="opacity: 0;">南部科學園區辦公室</div><div class="lab co" style="opacity: 0;">台灣卓越無人機海外商機聯盟</div><div class="lab co" style="opacity: 0;">亞洲無人機創新園區廠商協進會</div><div class="lab co" style="opacity: 0;">無人載具系統產業發展協會</div><div class="lab co" style="opacity: 0;">中華無人系統應用發展協會</div></div>
+      <div class="loading" id="loading" style="opacity: 0;">正在組裝供應鏈島…</div>
+      <div class="listview" id="listview" hidden=""><div class="lv-bar"><input type="search" id="lvQ" placeholder="搜尋名稱、業務或地點" aria-label="搜尋單位">
+  <select id="lvSort" aria-label="排序"><option value="seg">依環節</option><option value="name">依名稱</option><option value="year">依成立年份</option></select>
+  <span class="n" id="lvN"></span></div>
+ <div class="lv-chips" role="group" aria-label="篩選環節（可複選）"><button class="btn" data-lvseg="chip" aria-pressed="false"><i style="background:#5B6CF0"></i>晶片、飛控與電子</button><button class="btn" data-lvseg="comm" aria-pressed="false"><i style="background:#1597B2"></i>通訊、雷達與導航</button><button class="btn" data-lvseg="power" aria-pressed="false"><i style="background:#D89A00"></i>電源與電池</button><button class="btn" data-lvseg="motor" aria-pressed="false"><i style="background:#D64545"></i>動力系統</button><button class="btn" data-lvseg="optic" aria-pressed="false"><i style="background:#8A57D1"></i>光學與酬載</button><button class="btn" data-lvseg="struct" aria-pressed="false"><i style="background:#6E8F33"></i>機構、複材與製造</button><button class="btn" data-lvseg="system" aria-pressed="false"><i style="background:#E0681A"></i>整機與系統整合</button><button class="btn" data-lvseg="service" aria-pressed="false"><i style="background:#C2457E"></i>應用服務與軟體</button><button class="btn" data-lvseg="test" aria-pressed="false"><i style="background:#22946A"></i>研發、法人與學界</button><button class="btn" data-lvseg="gov" aria-pressed="false"><i style="background:#56707C"></i>政府與產業組織</button></div>
+ <div class="lv-grid" id="lvGrid"></div></div>
+      <div class="tools">
+        <span class="seg-toggle" role="group" aria-label="檢視"><button class="btn" data-view="island" aria-pressed="true">島嶼</button><button class="btn" data-view="list" aria-pressed="false">清單</button><button class="btn" data-view="time" aria-pressed="false">時間</button></span>
+        <span class="seg-toggle isl" role="group" aria-label="擺放方式"><button class="btn" data-mode="geo" aria-pressed="true">依所在地</button><button class="btn" data-mode="seg" aria-pressed="false">依環節</button></span>
+        <button class="btn isl" id="tourBtn" aria-pressed="false">▶ 導覽</button>
+        <button class="btn isl" id="labBtn" aria-pressed="false">名牌</button>
+        <button class="btn isl" id="flowBtn" aria-pressed="true">流向</button>
+        <button class="btn isl" id="resetBtn">全景</button>
+        <button class="btn" id="helpBtn" aria-label="操作說明">?</button>
+      </div>
+      <div class="hint" id="hint">建築依單位所在地擺放 · 點縣市看當地單位</div>
+      <div class="timebar" id="timebar" hidden="">
+        <button class="btn" id="tPlay" aria-label="播放時間軸">▶</button>
+        <span class="yr" id="tYear"></span>
+        <input type="range" id="tRange" step="1" aria-label="年份" min="1946" max="2026">
+        <div class="tk" id="tTick" aria-live="polite"></div>
+      </div>
+      <div class="card" id="card" hidden=""></div>
+      <div class="story" id="story" aria-live="polite" hidden=""></div>
+    </section>
+    <aside>
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" id="t-seg" aria-selected="true" data-p="p-seg">環節</button>
+        <button class="tab" role="tab" id="t-co" aria-selected="false" data-p="p-co">廠商</button>
+        <button class="tab" role="tab" id="t-data" aria-selected="false" data-p="p-data">產業數據</button>
+      </div>
+      <div class="pane" id="p-seg" role="tabpanel"><h3>供應鏈環節<small>可複選</small><button class="btn" id="segClear" hidden="">清除篩選</button></h3><button class="seg" data-seg="chip"><i style="background:#5B6CF0"></i><b>晶片、飛控與電子</b><span class="n">6 家</span><span class="d">SoC、MCU、影像處理晶片、飛控電腦與電子製造。</span></button><button class="seg" data-seg="comm"><i style="background:#1597B2"></i><b>通訊、雷達與導航</b><span class="n">5 家</span><span class="d">影像傳輸、射頻、相控陣雷達與 GPS 天線。</span></button><button class="seg" data-seg="power"><i style="background:#D89A00"></i><b>電源與電池</b><span class="n">3 家</span><span class="d">電芯整合、電池模組、BMS 與超級電容。</span></button><button class="seg" data-seg="motor"><i style="background:#D64545"></i><b>動力系統</b><span class="n">2 家</span><span class="d">無刷馬達、電子調速器與推進系統。</span></button><button class="seg" data-seg="optic"><i style="background:#8A57D1"></i><b>光學與酬載</b><span class="n">3 家</span><span class="d">光學鏡頭、EO/IR 攝影機與任務酬載。</span></button><button class="seg" data-seg="struct"><i style="background:#6E8F33"></i><b>機構、複材與製造</b><span class="n">6 家</span><span class="d">碳纖維複材機體、金屬加工、結構件與收納儲運。</span></button><button class="seg" data-seg="system"><i style="background:#E0681A"></i><b>整機與系統整合</b><span class="n">16 家</span><span class="d">整機設計製造、系統整合、地面站與反無人機。</span></button><button class="seg" data-seg="service"><i style="background:#C2457E"></i><b>應用服務與軟體</b><span class="n">13 家</span><span class="d">飛航服務、群飛表演、人才培訓、GIS 與設計軟體。</span></button><button class="seg" data-seg="test"><i style="background:#22946A"></i><b>研發、法人與學界</b><span class="n">8 家</span><span class="d">研究法人、測試驗證機構與大學。</span></button><button class="seg" data-seg="gov"><i style="background:#56707C"></i><b>政府與產業組織</b><span class="n">8 家</span><span class="d">主管機關、園區、產業聯盟與協會。</span></button><p class="note">「依所在地」模式下，建築放在單位的總部或主要據點；「依環節」模式把同一環節集中，由北到南排成上游到下游。</p></div>
+      <div class="pane" id="p-co" role="tabpanel" hidden=""><div class="affs" role="group" aria-label="依聯盟篩選"><button class="btn" data-aff="" aria-pressed="true">全部 70</button><button class="btn" data-aff="sp" aria-pressed="false">亞創進駐 47</button><button class="btn" data-aff="tn" aria-pressed="false">協進會 27</button><button class="btn" data-aff="td" aria-pressed="false">大聯盟主席團 8</button></div><div class="grp"><h4><i style="background:#5B6CF0"></i>晶片、飛控與電子</h4><button class="co-item" data-co="0" data-aff=""><span>聯發科<span class="bdgs"></span></span><span>新竹科學園區</span></button><button class="co-item" data-co="1" data-aff=""><span>聯詠<span class="bdgs"></span></span><span>新竹科學園區</span></button><button class="co-item" data-co="2" data-aff=""><span>新唐<span class="bdgs"></span></span><span>新竹科學園區</span></button><button class="co-item" data-co="3" data-aff=""><span>盛群<span class="bdgs"></span></span><span>新竹科學園區</span></button><button class="co-item" data-co="4" data-aff="sp"><span>英諾飛科技<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em></span></span><span>桃園楊梅</span></button><button class="co-item" data-co="5" data-aff="sp"><span>銘旺科技<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em></span></span><span>嘉義（亞創）</span></button></div><div class="grp"><h4><i style="background:#1597B2"></i>通訊、雷達與導航</h4><button class="co-item" data-co="6" data-aff=""><span>啟碁<span class="bdgs"></span></span><span>新竹科學園區</span></button><button class="co-item" data-co="7" data-aff=""><span>佳邦<span class="bdgs"></span></span><span>苗栗竹南</span></button><button class="co-item" data-co="8" data-aff=""><span>倢通科技<span class="bdgs"></span></span><span>新竹科學園區</span></button><button class="co-item" data-co="9" data-aff="sp"><span>和迪科技<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em></span></span><span>嘉義（亞創）</span></button><button class="co-item" data-co="10" data-aff="sp tn"><span>創未來科技<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em><em class="bdg bdg-tn">協進會</em></span></span><span>新竹科學園區</span></button></div><div class="grp"><h4><i style="background:#D89A00"></i>電源與電池</h4><button class="co-item" data-co="11" data-aff="sp tn"><span>應能科技 ★<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em><em class="bdg bdg-tn">協進會</em></span></span><span>桃園蘆竹</span></button><button class="co-item" data-co="12" data-aff=""><span>順達<span class="bdgs"></span></span><span>待確認</span></button><button class="co-item" data-co="13" data-aff=""><span>新普<span class="bdgs"></span></span><span>新竹湖口</span></button></div><div class="grp"><h4><i style="background:#D64545"></i>動力系統</h4><button class="co-item" data-co="14" data-aff=""><span>東元<span class="bdgs"></span></span><span>台北南港</span></button><button class="co-item" data-co="15" data-aff=""><span>豐兆航太<span class="bdgs"></span></span><span>待確認</span></button></div><div class="grp"><h4><i style="background:#8A57D1"></i>光學與酬載</h4><button class="co-item" data-co="16" data-aff=""><span>亞光<span class="bdgs"></span></span><span>台中潭子</span></button><button class="co-item" data-co="17" data-aff=""><span>中揚光<span class="bdgs"></span></span><span>待確認</span></button><button class="co-item" data-co="18" data-aff="sp"><span>源奇科技<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em></span></span><span>嘉義（亞創）</span></button></div><div class="grp"><h4><i style="background:#6E8F33"></i>機構、複材與製造</h4><button class="co-item" data-co="19" data-aff="sp tn"><span>碳基科技<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em><em class="bdg bdg-tn">協進會</em></span></span><span>台中</span></button><button class="co-item" data-co="20" data-aff=""><span>拓凱<span class="bdgs"></span></span><span>台中</span></button><button class="co-item" data-co="21" data-aff="sp tn td"><span>長榮航太<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em><em class="bdg bdg-tn">協進會</em><em class="bdg bdg-td">大聯盟主席團</em></span></span><span>桃園大園</span></button><button class="co-item" data-co="22" data-aff="sp tn td"><span>亞航<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em><em class="bdg bdg-tn">協進會</em><em class="bdg bdg-td">大聯盟主席團</em></span></span><span>台南</span></button><button class="co-item" data-co="23" data-aff="sp"><span>樹德企業<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em></span></span><span>嘉義（亞創）</span></button><button class="co-item" data-co="24" data-aff="sp"><span>海威工業<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em></span></span><span>彰化鹿港</span></button></div><div class="grp"><h4><i style="background:#E0681A"></i>整機與系統整合</h4><button class="co-item" data-co="25" data-aff="sp tn td"><span>雷虎科技<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em><em class="bdg bdg-tn">協進會</em><em class="bdg bdg-td">大聯盟主席團</em></span></span><span>台中大雅</span></button><button class="co-item" data-co="26" data-aff="sp tn td"><span>中光電智能機器人<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em><em class="bdg bdg-tn">協進會</em><em class="bdg bdg-td">大聯盟主席團</em></span></span><span>新竹科學園區</span></button><button class="co-item" data-co="27" data-aff="sp tn td"><span>經緯航太<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em><em class="bdg bdg-tn">協進會</em><em class="bdg bdg-td">大聯盟主席團</em></span></span><span>台中大雅</span></button><button class="co-item" data-co="28" data-aff="sp tn td"><span>神耀科技<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em><em class="bdg bdg-tn">協進會</em><em class="bdg bdg-td">大聯盟主席團</em></span></span><span>桃園龍潭</span></button><button class="co-item" data-co="29" data-aff="td"><span>漢翔航空<span class="bdgs"><em class="bdg bdg-td">大聯盟主席團</em></span></span><span>台中西屯</span></button><button class="co-item" data-co="30" data-aff="td"><span>佳世達集團<span class="bdgs"><em class="bdg bdg-td">大聯盟主席團</em></span></span><span>桃園龜山</span></button><button class="co-item" data-co="31" data-aff="sp tn"><span>坤暐科技<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em><em class="bdg bdg-tn">協進會</em></span></span><span>嘉義</span></button><button class="co-item" data-co="32" data-aff="sp tn"><span>璿元科技<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em><em class="bdg bdg-tn">協進會</em></span></span><span>嘉義</span></button><button class="co-item" data-co="33" data-aff="sp"><span>智飛科技<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em></span></span><span>嘉義（亞創）</span></button><button class="co-item" data-co="34" data-aff="sp tn"><span>新樂飛無人機<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em><em class="bdg bdg-tn">協進會</em></span></span><span>嘉義（亞創）</span></button><button class="co-item" data-co="35" data-aff="sp tn"><span>原資系統整合<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em><em class="bdg bdg-tn">協進會</em></span></span><span>嘉義（亞創）</span></button><button class="co-item" data-co="36" data-aff="sp tn"><span>泰世科技<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em><em class="bdg bdg-tn">協進會</em></span></span><span>嘉義（亞創）</span></button><button class="co-item" data-co="37" data-aff="sp tn"><span>航見科技<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em><em class="bdg bdg-tn">協進會</em></span></span><span>桃園</span></button><button class="co-item" data-co="38" data-aff="sp tn"><span>艾知科技<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em><em class="bdg bdg-tn">協進會</em></span></span><span>台北內湖</span></button><button class="co-item" data-co="39" data-aff="sp"><span>蜘蛛視覺感測<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em></span></span><span>嘉義（亞創）</span></button><button class="co-item" data-co="40" data-aff="sp tn"><span>環球防衛科技<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em><em class="bdg bdg-tn">協進會</em></span></span><span>嘉義（亞創）</span></button></div><div class="grp"><h4><i style="background:#C2457E"></i>應用服務與軟體</h4><button class="co-item" data-co="41" data-aff="sp"><span>翔安飛服<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em></span></span><span>嘉義（亞創）</span></button><button class="co-item" data-co="42" data-aff="sp"><span>翔隆航太<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em></span></span><span>嘉義（亞創）</span></button><button class="co-item" data-co="43" data-aff="sp"><span>彥宣智能科技<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em></span></span><span>嘉義（亞創）</span></button><button class="co-item" data-co="44" data-aff="sp tn"><span>臺灣希望創新<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em><em class="bdg bdg-tn">協進會</em></span></span><span>台南歸仁</span></button><button class="co-item" data-co="45" data-aff="sp tn"><span>誼卡科技顧問<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em><em class="bdg bdg-tn">協進會</em></span></span><span>台中北屯</span></button><button class="co-item" data-co="46" data-aff="tn"><span>藏識科技<span class="bdgs"><em class="bdg bdg-tn">協進會</em></span></span><span>高雄鼓山</span></button><button class="co-item" data-co="47" data-aff="sp tn"><span>台灣數位光訊<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em><em class="bdg bdg-tn">協進會</em></span></span><span>嘉義（亞創）</span></button><button class="co-item" data-co="48" data-aff="sp tn"><span>自強工程顧問<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em><em class="bdg bdg-tn">協進會</em></span></span><span>嘉義（亞創）</span></button><button class="co-item" data-co="49" data-aff="sp"><span>傑群<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em></span></span><span>嘉義（亞創）</span></button><button class="co-item" data-co="50" data-aff="sp"><span>富蘭登科技<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em></span></span><span>嘉義（亞創）</span></button><button class="co-item" data-co="51" data-aff="tn"><span>艾斯特物聯科技<span class="bdgs"><em class="bdg bdg-tn">協進會</em></span></span><span>待確認</span></button><button class="co-item" data-co="52" data-aff="tn"><span>新易智整合行銷<span class="bdgs"><em class="bdg bdg-tn">協進會</em></span></span><span>待確認</span></button><button class="co-item" data-co="53" data-aff="sp"><span>皓準科技<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em></span></span><span>嘉義（亞創）</span></button></div><div class="grp"><h4><i style="background:#22946A"></i>研發、法人與學界</h4><button class="co-item" data-co="54" data-aff="sp tn"><span>工研院<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em><em class="bdg bdg-tn">協進會</em></span></span><span>新竹竹東</span></button><button class="co-item" data-co="55" data-aff="sp"><span>中科院<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em></span></span><span>桃園龍潭</span></button><button class="co-item" data-co="56" data-aff=""><span>金屬中心<span class="bdgs"></span></span><span>高雄楠梓</span></button><button class="co-item" data-co="57" data-aff="sp"><span>電信技術中心<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em></span></span><span>高雄路竹</span></button><button class="co-item" data-co="58" data-aff="sp"><span>台灣經濟研究院<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em></span></span><span>台北</span></button><button class="co-item" data-co="59" data-aff="sp"><span>國立中正大學<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em></span></span><span>嘉義民雄</span></button><button class="co-item" data-co="60" data-aff="sp tn"><span>國立虎尾科技大學<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em><em class="bdg bdg-tn">協進會</em></span></span><span>雲林虎尾</span></button><button class="co-item" data-co="61" data-aff="sp tn"><span>弘光科技大學<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em><em class="bdg bdg-tn">協進會</em></span></span><span>台中沙鹿</span></button></div><div class="grp"><h4><i style="background:#56707C"></i>政府與產業組織</h4><button class="co-item" data-co="62" data-aff=""><span>亞洲無人機AI創新應用研發中心<span class="bdgs"></span></span><span>嘉義縣</span></button><button class="co-item" data-co="63" data-aff="sp"><span>經濟部無人機產業發展專案辦公室<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em></span></span><span>嘉義縣</span></button><button class="co-item" data-co="64" data-aff="sp"><span>交通部民用航空局<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em></span></span><span>台北</span></button><button class="co-item" data-co="65" data-aff="sp"><span>南部科學園區辦公室<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em></span></span><span>台南新市</span></button><button class="co-item" data-co="66" data-aff=""><span>台灣卓越無人機海外商機聯盟<span class="bdgs"></span></span><span>台中西屯</span></button><button class="co-item" data-co="67" data-aff=""><span>亞洲無人機創新園區廠商協進會<span class="bdgs"></span></span><span>嘉義縣</span></button><button class="co-item" data-co="68" data-aff="sp"><span>無人載具系統產業發展協會<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em></span></span><span>嘉義（亞創）</span></button><button class="co-item" data-co="69" data-aff="sp"><span>中華無人系統應用發展協會<span class="bdgs"><em class="bdg bdg-sp">亞創進駐</em></span></span><span>嘉義（亞創）</span></button></div><p class="note">亞創進駐與協進會為兩份公開名單的全部成員。大聯盟逾 260 家會員的名單需登入才能查看，這裡只列公開報導中的主席與副主席。其他未標聯盟的廠商為補充的代表廠商。</p></div>
+      <div class="pane" id="p-data" role="tabpanel" hidden=""><h3>臺灣無人機產業</h3><div class="stats"><div class="stat"><b>442 億元</b><span>2025–2030 無人載具產業發展統籌型計畫</span></div><div class="stat"><b>48,750 架</b><span>國防部 2026 年規劃採購</span></div><div class="stat"><b>約 50,898 架</b><span>各部會 2026–2028 年公務需求</span></div><div class="stat"><b>20+ 家</b><span>台廠進入 Skydio、Parrot 非紅供應鏈</span></div></div>
+ <h3>產業聚落與聯盟</h3><div class="stats"><div class="stat"><b>49 個</b><span>亞創進駐單位（含政府、法人與學界）</span></div><div class="stat"><b>27 家</b><span>亞洲無人機創新園區廠商協進會會員</span></div><div class="stat"><b>260+ 家</b><span>台灣卓越無人機海外商機聯盟會員（2026 年 1 月）</span></div><div class="stat"><b>8 家</b><span>大聯盟主席與創始副主席</span></div></div>
+ <h3>產值（新台幣億元）</h3><div class="bars"><span class="y">2025</span><div><div class="b" style="width:25.155%"><span>129</span></div></div><span class="y">2026</span><div><div class="b" style="width:39%"><span>200</span></div></div><span class="y">2030</span><div><div class="b" style="width:78%"><span>400</span></div></div></div>
+ <p class="note">2025 經濟部估計值；2026 目標；2030 目標。年份間距不等。</p>
+ <p class="note">波蘭是臺灣無人機最大出口市場。</p>
+ <h3 style="margin-top:16px">資料來源</h3>
+ <ol class="src"><li><a href="https://www.nspark.org.tw/latest_news/news/23" target="_blank" rel="noopener">南科園區：442億砸下去！台灣無人機起飛？</a></li><li><a href="https://technews.tw/2026/09/29/non-china-supply-chains-reshape-low-altitude-market-drone-opportunities-taiwan-global-connection/" target="_blank" rel="noopener">科技新報：非紅供應鏈重塑低空市場（2026/09）</a></li><li><a href="https://spacechiayi.tw/?cat=32" target="_blank" rel="noopener">亞洲無人機AI創新應用研發中心：進駐單位</a></li><li><a href="https://tndia.tw/our-portfolio/" target="_blank" rel="noopener">嘉義縣亞洲無人機創新園區廠商協進會：會員一覽</a></li><li><a href="https://www.cna.com.tw/news/afe/202601220198.aspx" target="_blank" rel="noopener">中央社：台灣無人機聯盟逾260家會員</a></li><li><a href="https://www.epochtimes.com/b5/24/9/23/n14336826.htm" target="_blank" rel="noopener">大紀元：50家廠商成立無人機聯盟（主席與副主席）</a></li></ol>
+ <p class="note">各單位的資料來源列在單位介紹卡中。</p>
+ <p class="note">連線代表環節之間的上下游關係，不代表特定公司之間的交易。所在地依公司登記、官網、徵才或新聞資料；總部查不到的亞創進駐單位標在嘉義亞創據點，其餘查不到的放在「地點待確認」。亞創進駐單位的描述摘自各單位在亞創網站的介紹；公開頁面未說明業務的單位，環節分類為暫定。</p></div>
+    </aside>
+  </main>
+</div>
+<div class="guide" id="guide" role="dialog" aria-modal="true" aria-labelledby="gH"><div class="box" id="gBox"><div class="k">HELLO, TAIWAN UAV</div><h2 id="gH">歡迎來到無人機供應鏈臺灣島</h2><p>島上每一棟建築是一家廠商或機構，共 70 家，顏色代表它所屬的供應鏈環節。</p>
+   <div class="dots" aria-hidden="true"><i class="on"></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i></div>
+   <div class="ctl"><button class="btn" data-g="close">略過</button><span><button class="btn pri" data-g="next">下一步</button></span></div></div></div>
+
+<script>
+/* ============ 設定 ============
+   把 Google 試算表的 ID 貼在下面的引號中（網址 /d/ 與 /edit 之間那一串）。
+   留空時，網頁會顯示內建資料。 */
+window.SHEET_ID = "1yn1kpvU4MWoyKNzWKa_yVObjFgbjczVJnT-rdl2pF8k";
+</script>
+<script src="./index.html_files/three.min.js.下載"></script>
+<script src="./index.html_files/gsap.min.js.下載"></script>
+<script>
+(async function(){
+/* ---------- data ---------- */
+const SRC={
+  nspark:{t:"南科園區：442億砸下去！台灣無人機起飛？",u:"https://www.nspark.org.tw/latest_news/news/23"},
+  technews:{t:"科技新報：非紅供應鏈重塑低空市場（2026/09）",u:"https://technews.tw/2026/09/29/non-china-supply-chains-reshape-low-altitude-market-drone-opportunities-taiwan-global-connection/"},
+  investor:{t:"財訊快報：無人機概念股 純度比一比",u:"https://www.investor.com.tw/onlineNews/FreeColArticle.asp?articleNo=6980"},
+  cna:{t:"中央社：東元秀機器人關鍵模組和無人機馬達",u:"https://www.cna.com.tw/news/afe/202508200067.aspx"},
+  udn:{t:"經濟日報：碳基再靠無人機起飛",u:"https://udn.com/news/story/7238/9507870"},
+  ctee:{t:"工商時報：神耀科技 2026 布局",u:"https://www.ctee.com.tw/news/20260105701583-430502"},
+  otc:{t:"應能科技公司簡介",u:"https://otc.uch.edu.tw/uploads/bulletin_file/file/69e1dd1d8861627b7a002715/%E6%87%89%E8%83%BD%E7%A7%91%E6%8A%80%E8%82%A1%E4%BB%BD%E6%9C%89%E9%99%90%E5%85%AC%E5%8F%B8.pdf"},
+  tex:{t:"台灣精品：經緯航太 Sky Arrow 55",u:"https://www.taiwanexcellence.org/jp/product/40262"},
+  hackmd:{t:"台灣無人機產業鏈協力廠商名單（公開整理）",u:"https://hackmd.io/@5giotlead/SklLzC37Gl"},
+  space:{t:"亞洲無人機AI創新應用研發中心：進駐單位",u:"https://spacechiayi.tw/?cat=32"},
+  tndia:{t:"嘉義縣亞洲無人機創新園區廠商協進會：會員一覽",u:"https://tndia.tw/our-portfolio/"},
+  tedi:{t:"中央社：台灣無人機聯盟逾260家會員",u:"https://www.cna.com.tw/news/afe/202601220198.aspx"},
+  tedi2:{t:"大紀元：50家廠商成立無人機聯盟（主席與副主席）",u:"https://www.epochtimes.com/b5/24/9/23/n14336826.htm"},
+  aiseed:{t:"科技新報：新創艾知獲軍用無人機訂單",u:"https://technews.tw/2023/07/30/startup-aiseed-wins-order-for-military-drones/"}
+};
+let AFF={sp:{name:"亞創進駐",full:"亞洲無人機AI創新應用研發中心 進駐單位",src:"space"},
+  tn:{name:"協進會",full:"嘉義縣亞洲無人機創新園區廠商協進會 會員",src:"tndia"},
+  td:{name:"大聯盟主席團",full:"台灣卓越無人機海外商機聯盟（TEDIBOA）主席或副主席",src:"tedi2"}};
+let SEGS=[
+ {id:"chip",  name:"晶片、飛控與電子",en:"Chips & Avionics",   color:"#5B6CF0", desc:"SoC、MCU、影像處理晶片、飛控電腦與電子製造。"},
+ {id:"comm",  name:"通訊、雷達與導航",en:"Datalink & Sensing", color:"#1597B2", desc:"影像傳輸、射頻、相控陣雷達與 GPS 天線。"},
+ {id:"power", name:"電源與電池",     en:"Power & Battery",    color:"#D89A00", desc:"電芯整合、電池模組、BMS 與超級電容。"},
+ {id:"motor", name:"動力系統",       en:"Propulsion",         color:"#D64545", desc:"無刷馬達、電子調速器與推進系統。"},
+ {id:"optic", name:"光學與酬載",     en:"Optics & Payload",   color:"#8A57D1", desc:"光學鏡頭、EO/IR 攝影機與任務酬載。"},
+ {id:"struct",name:"機構、複材與製造",en:"Airframe & Mfg.",    color:"#6E8F33", desc:"碳纖維複材機體、金屬加工、結構件與收納儲運。"},
+ {id:"system",name:"整機與系統整合", en:"Integrators",        color:"#E0681A", desc:"整機設計製造、系統整合、地面站與反無人機。"},
+ {id:"service",name:"應用服務與軟體",en:"Services & Software",color:"#C2457E", desc:"飛航服務、群飛表演、人才培訓、GIS 與設計軟體。"},
+ {id:"test",  name:"研發、法人與學界",en:"R&D & Academia",     color:"#22946A", desc:"研究法人、測試驗證機構與大學。"},
+ {id:"gov",   name:"政府與產業組織", en:"Public & Alliances", color:"#56707C", desc:"主管機關、園區、產業聯盟與協會。"}
+];
+let LINKS=[["chip","comm"],["chip","motor"],["chip","system"],["comm","system"],["power","motor"],["power","system"],["motor","system"],["optic","system"],["struct","system"],["system","service"],["system","test"]];
+const SP=(p)=>p?{t:"亞創進駐介紹",u:"https://spacechiayi.tw/?p="+p}:null;
+let CO=[
+ {n:"聯發科",en:"MediaTek",s:"chip",city:"新竹",r:"無線傳輸模組用的系統單晶片（SoC）。",src:["investor"]},
+ {n:"聯詠",en:"Novatek",s:"chip",city:"新竹",r:"影像處理器晶片。",src:["investor"]},
+ {n:"新唐",en:"Nuvoton",s:"chip",city:"新竹",r:"微控制器（MCU）。",src:["investor"]},
+ {n:"盛群",en:"Holtek",s:"chip",city:"新竹",r:"微控制器（MCU）。",src:["investor"]},
+ {n:"英諾飛科技",en:"",s:"chip",city:null,r:"深耕無人載具控制二十多年，提供飛控電腦、地面導控站、數據鏈與三軸雙光雲台。",src:[],aff:["sp"],p:1976},
+ {n:"銘旺科技",en:"",s:"chip",city:"桃園（創立地）",r:"1978 年創立，原以 PCB、面板與觸控起家，轉型 AI 應用並跨入無人機。",src:["hackmd"],aff:["sp"],p:4077},
+ {n:"啟碁",en:"WNC",s:"comm",city:"新竹",r:"毫米波雷達與網通產品。",src:["hackmd"]},
+ {n:"佳邦",en:"INPAQ",s:"comm",city:"苗栗竹南",r:"GPS 定位陶瓷天線等天線解決方案。",src:["investor"]},
+ {n:"倢通科技",en:"TaiwanMicro",s:"comm",city:"新竹科學園區",r:"MMIC / RF 射頻通訊元件。",src:[]},
+ {n:"和迪科技",en:"",s:"comm",city:null,r:"逾 20 年 COFDM 無線影像傳輸經驗，晶片、硬體到軟體皆在台灣設計製造。",src:[],aff:["sp"],p:4092},
+ {n:"創未來科技",en:"Tron Future Tech",s:"comm",city:null,r:"全數位相控陣系統，感測與通訊技術。",src:[],aff:["sp","tn"],p:1992},
+ {n:"應能科技",en:"Inner Energy Technology",s:"power",city:"桃園蘆竹",r:"整合鋰離子、LiPo 電池與超級電容，依應用客製電源系統與 BMS。",src:["otc"],aff:["sp","tn"],p:1942,star:true},
+ {n:"順達",en:"Dynapack",s:"power",city:null,r:"電池模組與 BMS。",src:["hackmd"]},
+ {n:"新普",en:"Simplo",s:"power",city:null,r:"電池組（Battery Pack）。",src:["hackmd"]},
+ {n:"東元",en:"TECO",s:"motor",city:null,r:"高效率無人機馬達，子系統涵蓋驅動馬達、電調與電池，以民用為主。",src:["cna"]},
+ {n:"豐兆航太",en:"",s:"motor",city:null,r:"無人機動力系統。",src:["hackmd"]},
+ {n:"亞光",en:"Asia Optical",s:"optic",city:"台中",r:"光學鏡頭。",src:["investor"]},
+ {n:"中揚光",en:"Calin Technology",s:"optic",city:null,r:"光學鏡頭。",src:["investor"]},
+ {n:"源奇科技",en:"",s:"optic",city:null,r:"奇景光電子公司，提供無人機用 EO/IR 攝影機等光學取像系統。",src:[],aff:["sp"],p:4080},
+ {n:"碳基科技",en:"",s:"struct",city:"台中",r:"碳纖維複材機體，參與騰雲、銳鳶等國軍無人機計畫。",src:["udn","nspark"],aff:["sp","tn"]},
+ {n:"拓凱",en:"Topkey",s:"struct",city:"台中",r:"碳纖維複材。",src:["hackmd"]},
+ {n:"長榮航太",en:"EGAT",s:"struct",city:"桃園",r:"複材結構件與航太維修。",src:["hackmd"],aff:["sp","tn","td"]},
+ {n:"亞航",en:"Air Asia Company",s:"struct",city:"台南",r:"取得中科院授權，製造中型無人機複材機體，並為無人機維修廠。",src:["nspark"],aff:["sp","tn","td"]},
+ {n:"樹德企業",en:"",s:"struct",city:null,r:"台灣製收納產品品牌，1969 年起從代工發展到自有品牌。",src:[],aff:["sp"],p:4089},
+ {n:"海威工業",en:"Hyway Tech",s:"struct",city:"彰化鹿港",r:"金屬製品表面處理、引擎製造與五金。",src:[],aff:["sp"],p:2304},
+ {n:"雷虎科技",en:"Thunder Tiger",s:"system",city:"台中",r:"首家列入美國國防部 Blue UAS 名單的台灣廠商，規劃美國俄亥俄州生產。",src:["nspark"],aff:["sp","tn","td"],p:1911},
+ {n:"中光電智能機器人",en:"CIRC",s:"system",city:"新竹",r:"整機與 AI 視覺、自主飛行、自動充電機巢。",src:["hackmd"],aff:["sp","tn","td"]},
+ {n:"經緯航太",en:"GEOSAT",s:"system",city:null,r:"固定翼 Sky Arrow 55（續航 4 小時、酬載 6 kg），自製飛控。",src:["tex"],aff:["sp","tn","td"],p:1916},
+ {n:"神耀科技",en:"MiTAC Advanced",s:"system",city:"桃園龍潭",r:"聯華神通集團旗下，海巡署無人機、整機整合與反無人機。",src:["ctee","nspark"],aff:["sp","tn","td"],p:2300},
+ {n:"漢翔航空",en:"AIDC",s:"system",city:"台中",r:"反無人機系統與航太結構；董事長擔任大聯盟主席。",src:["nspark","tedi"],aff:["td"]},
+ {n:"佳世達集團",en:"Qisda",s:"system",city:null,r:"大聯盟創始副主席之一。",src:["tedi2"],aff:["td"]},
+ {n:"坤暐科技",en:"Kunway",s:"system",city:"嘉義（總部）、高雄（產線）",r:"多旋翼電動無人機平台，用於農業噴藥、電力巡線與航拍測繪，並提供代噴服務。",src:[],aff:["sp","tn"],p:1923},
+ {n:"璿元科技",en:"",s:"system",city:"台南、嘉義",r:"無人飛行系統整合，開發具美國 FCC 認證遙控器與測繪、巡檢無人機。",src:[],aff:["sp","tn"],p:1928},
+ {n:"智飛科技",en:"",s:"system",city:null,r:"研發無人飛機，提供環境監控用無人飛行系統與高精度航拍。",src:[],aff:["sp"],p:1996},
+ {n:"新樂飛無人機",en:"7A Drones",s:"system",city:null,r:"前身樂飛空農，提供航拍、巡檢、代噴、清洗與運輸無人機方案。",src:[],aff:["sp","tn"],p:1920},
+ {n:"原資系統整合",en:"Rdata",s:"system",city:null,r:"無人機研發、設計、生產與系統整合，應用於測繪、救災與精準農業。",src:[],aff:["sp","tn"],p:2080},
+ {n:"泰世科技",en:"GAUI",s:"system",city:null,r:"1996 年成立，設計製造模型直升機與電動、燃油、多軸無人機。",src:[],aff:["sp","tn"],p:1934},
+ {n:"航見科技",en:"HJ UAVs",s:"system",city:null,r:"結合自動駕駛、數據處理與綠能的無人載具系統，相容約 85% 行業機型。",src:[],aff:["sp","tn"],p:1948},
+ {n:"艾知科技",en:"aiseed",s:"system",city:null,r:"AI 與電腦視覺新創，曾獲軍用無人機訂單。",src:["aiseed"],aff:["sp","tn"],p:1902},
+ {n:"蜘蛛視覺感測",en:"ZenaDrone",s:"system",city:null,r:"航拍、測繪、客製化無人機設計製造與培訓，以及農業與環境監測。",src:[],aff:["sp"],p:4083},
+ {n:"環球防衛科技",en:"",s:"system",city:null,r:"公開頁面未說明業務，暫歸此環節。",src:[],aff:["sp","tn"],p:2298},
+ {n:"翔安飛服",en:"Droneviation Service",s:"service",city:null,r:"無人機服務供應商。",src:[],aff:["sp"],p:4365},
+ {n:"翔隆航太",en:"Dragonfly",s:"service",city:null,r:"2015 年成立的無人機專業應用服務，累積逾千次飛行與百餘件案件。",src:["hackmd"],aff:["sp"],p:1972},
+ {n:"彥宣智能科技",en:"flyAdvisor",s:"service",city:null,r:"飛航營運管理、AI 應用與無人機人才培訓。",src:[],aff:["sp"],p:1968},
+ {n:"臺灣希望創新",en:"",s:"service",city:"台南歸仁",r:"四所大專院校團隊成立，專長無人機群飛表演。",src:[],aff:["sp","tn"],p:1906},
+ {n:"誼卡科技顧問",en:"達梭系統台灣代理",s:"service",city:null,r:"達梭系統（Dassault Systèmes）台灣代理，設計與數位轉型軟體。",src:[],aff:["sp","tn"],p:1956},
+ {n:"藏識科技",en:"PilotGaea",s:"service",city:null,r:"3D GIS、無人機系統與飛行模擬軟體。",src:[],aff:["tn"]},
+ {n:"台灣數位光訊",en:"TOPMSO",s:"service",city:null,r:"有線電視、電信與媒體，透過 IoT 平台參與智慧城市。",src:[],aff:["sp","tn"],p:1960},
+ {n:"自強工程顧問",en:"",s:"service",city:null,r:"1984 年成立的工程顧問公司。",src:[],aff:["sp","tn"]},
+ {n:"傑群",en:"",s:"service",city:null,r:"代理國內外工業品牌，涵蓋航太製造、軍事維護與農業等領域。",src:[],aff:["sp"],p:2574},
+ {n:"富蘭登科技",en:"",s:"service",city:null,r:"精密分析儀器與半導體設備維修、技術諮詢與零件銷售。",src:[],aff:["sp"],p:2076},
+ {n:"艾斯特物聯科技",en:"Aster IoT",s:"service",city:null,r:"物聯網科技公司；公開資料未說明無人機業務。",src:[],aff:["tn"]},
+ {n:"新易智整合行銷",en:"",s:"service",city:null,r:"整合行銷。",src:[],aff:["tn"]},
+ {n:"皓準科技",en:"",s:"service",city:null,r:"亞創網站內容發布單位；公開頁面未說明業務。",src:[],aff:["sp"],p:4336},
+ {n:"工研院",en:"ITRI",s:"test",city:"新竹",r:"無人機關鍵模組研發與 Module Day 媒合；進駐單位含機械所、智慧機械中心、材化所。",src:[],aff:["sp","tn"],p:1885},
+ {n:"中科院",en:"NCSIST",s:"test",city:"桃園龍潭",r:"國軍無人機研發，技轉民間廠商生產。",src:["nspark"],aff:["sp"],p:1875},
+ {n:"金屬中心",en:"MIRDC",s:"test",city:"高雄",r:"金屬與複材檢測；與大聯盟合辦海外台灣館。",src:["hackmd"]},
+ {n:"電信技術中心",en:"TTC",s:"test",city:null,r:"電信與無線通訊測試驗證。",src:[],aff:["sp"],p:2083},
+ {n:"台灣經濟研究院",en:"TIER",s:"test",city:null,r:"產業經濟研究。",src:[],aff:["sp"],p:2460},
+ {n:"國立中正大學",en:"",s:"test",city:"嘉義",r:"大學。",src:[],aff:["sp"],p:2364},
+ {n:"國立虎尾科技大學",en:"",s:"test",city:"雲林虎尾",r:"飛機系與航電所研究無人機系統逾十年，設有無人機先進製造與檢測實驗室。",src:[],aff:["sp","tn"]},
+ {n:"弘光科技大學",en:"",s:"test",city:"台中",r:"大學工學院。",src:[],aff:["sp","tn"]},
+ {n:"亞洲無人機AI創新應用研發中心",en:"Space Chiayi",s:"gov",city:"嘉義",r:"無人機與 AI 創新應用研發園區，提供進駐、測試場域與場館服務。",src:["space"]},
+ {n:"經濟部無人機產業發展專案辦公室",en:"",s:"gov",city:null,r:"推動無人機產業發展。",src:[],aff:["sp"],p:2087},
+ {n:"交通部民用航空局",en:"CAA",s:"gov",city:null,r:"無人機法規與管理主管機關。",src:[],aff:["sp"],p:1857},
+ {n:"南部科學園區辦公室",en:"",s:"gov",city:"台南",r:"科學園區管理。",src:[],aff:["sp"],p:1861},
+ {n:"台灣卓越無人機海外商機聯盟",en:"TEDIBOA",s:"gov",city:null,r:"2024 年由 50 家廠商成立，已逾 260 家會員；推動海外拓銷，主席由漢翔董事長擔任。",src:["tedi","tedi2"]},
+ {n:"亞洲無人機創新園區廠商協進會",en:"TNDIA",s:"gov",city:"嘉義",r:"嘉義縣亞洲無人機創新園區的廠商協進會，27 家會員。",src:["tndia"]},
+ {n:"無人載具系統產業發展協會",en:"",s:"gov",city:null,r:"社團法人中華民國無人載具系統產業發展協會。",src:[],aff:["sp"],p:2578},
+ {n:"中華無人系統應用發展協會",en:"",s:"gov",city:null,r:"非營利產業協會。",src:[],aff:["sp"],p:2071}
+];
+CO.forEach(c=>{c.aff=c.aff||[];});
+/* 成立年份（公開資料可查者）；試算表「單位」分頁若有「成立年份」欄位，以試算表為準 */
+const YEAR={"聯發科":1997,"聯詠":1997,"新唐":2008,"盛群":1998,"銘旺科技":1978,"啟碁":1996,"佳邦":1996,"順達":1998,"新普":1992,"東元":1956,
+ "亞光":1980,"拓凱":1989,"亞航":1946,"樹德企業":1969,"雷虎科技":1979,"漢翔航空":1996,"佳世達集團":1984,"泰世科技":1996,"翔隆航太":2015,
+ "自強工程顧問":1984,"工研院":1973,"中科院":1969,"金屬中心":1963,"台灣經濟研究院":1976,"國立中正大學":1989,"國立虎尾科技大學":1980,
+ "弘光科技大學":1967,"交通部民用航空局":1947,"台灣卓越無人機海外商機聯盟":2024};
+/* ---------- locations ---------- */
+const PL={hsp:["新竹科學園區",24.78,121.00],itri:["新竹竹東",24.77,121.05],hk:["新竹湖口",24.90,121.04],zn:["苗栗竹南",24.69,120.88],
+ lz:["桃園蘆竹",25.05,121.29],ym:["桃園楊梅",24.91,121.15],dy:["桃園大園",25.06,121.22],lt:["桃園龍潭",24.86,121.22],ty:["桃園",24.99,121.31],gs:["桃園龜山",25.03,121.36],
+ ng:["台北南港",25.05,121.61],nh:["台北內湖",25.08,121.58],tp:["台北",25.04,121.53],
+ tcdy:["台中大雅",24.23,120.65],tc:["台中",24.15,120.67],tz:["台中潭子",24.21,120.71],xt:["台中西屯",24.18,120.62],bt:["台中北屯",24.18,120.69],sl:["台中沙鹿",24.23,120.57],
+ lg:["彰化鹿港",24.06,120.43],hw:["雲林虎尾",23.71,120.43],space:["嘉義縣（亞創）",23.55,120.42],mx:["嘉義民雄",23.56,120.47],cy:["嘉義",23.48,120.45],
+ tn:["台南",22.99,120.21],gr:["台南歸仁",22.97,120.29],xs:["台南新市（南科）",23.10,120.28],nz:["高雄楠梓",22.73,120.33],lzk:["高雄路竹",22.86,120.26],gsk:["高雄鼓山",22.65,120.28]};
+const GEO={"聯發科":["hsp"],"聯詠":["hsp"],"新唐":["hsp"],"盛群":["hsp"],"英諾飛科技":["ym"],"啟碁":["hsp"],"佳邦":["zn"],"倢通科技":["hsp"],
+ "創未來科技":["hsp","反無人機系統設於新竹科學園區"],"應能科技":["lz"],"新普":["hk"],"東元":["ng"],"亞光":["tz"],"碳基科技":["tc"],"拓凱":["tc"],
+ "長榮航太":["dy"],"亞航":["tn"],"海威工業":["lg"],"雷虎科技":["tcdy"],"中光電智能機器人":["hsp"],"經緯航太":["tcdy","台中分公司"],"神耀科技":["lt","龍潭廠"],
+ "漢翔航空":["xt"],"佳世達集團":["gs"],"坤暐科技":["cy","總部；產線在高雄"],"璿元科技":["cy","嘉義研發中心；台南設營業部"],"航見科技":["ty"],"艾知科技":["nh"],
+ "臺灣希望創新":["gr"],"誼卡科技顧問":["bt"],"藏識科技":["gsk"],"工研院":["itri","中興院區"],"中科院":["lt"],"金屬中心":["nz"],"電信技術中心":["lzk"],
+ "台灣經濟研究院":["tp"],"國立中正大學":["mx"],"國立虎尾科技大學":["hw"],"弘光科技大學":["sl"],"亞洲無人機AI創新應用研發中心":["space"],
+ "經濟部無人機產業發展專案辦公室":["space","設於亞創"],"交通部民用航空局":["tp"],"南部科學園區辦公室":["xs"],
+ "台灣卓越無人機海外商機聯盟":["xt","位於台中"],"亞洲無人機創新園區廠商協進會":["space"]};
+CO.forEach(c=>{const g=GEO[c.n];
+  if(g){const q=PL[g[0]];c.loc={lat:q[1],lon:q[2],label:q[0],note:g[1]||"",kind:"hq"};}
+  else if(c.aff.includes("sp")){const q=PL.space;c.loc={lat:q[1],lon:q[2],label:"嘉義縣（亞創進駐）",note:"總部地點未查到，依亞洲無人機AI創新應用研發中心的進駐據點標示",kind:"tenant"};}
+  else c.loc={label:"地點待確認",note:"公開資料未查到所在地",kind:"unk"};});
+const CITIES=[["基隆",25.12,121.72],["台北",25.05,121.55],["桃園",24.95,121.25],["新竹",24.80,121.00],["苗栗",24.56,120.85],["台中",24.17,120.68],
+ ["彰化",24.05,120.50],["南投",23.90,120.90],["雲林",23.70,120.45],["嘉義",23.52,120.43],["台南",23.03,120.24],["高雄",22.72,120.33],
+ ["屏東",22.60,120.55],["宜蘭",24.70,121.70],["花蓮",23.85,121.50],["台東",22.85,121.10]];
+CO.forEach(c=>{c.links=[...(c.p?[SP(c.p)]:[]),...c.src.map(k=>SRC[k]),...c.aff.filter(k=>!c.p||k!=="sp").map(k=>SRC[AFF[k].src])];});
+const TS=SRC.technews,NS=SRC.nspark;
+let STATS=[
+ {b:"指標",v:"442 億元",d:"2025–2030 無人載具產業發展統籌型計畫",y:"",t:NS.t,u:NS.u},
+ {b:"指標",v:"48,750 架",d:"國防部 2026 年規劃採購",y:"",t:TS.t,u:TS.u},
+ {b:"指標",v:"約 50,898 架",d:"各部會 2026–2028 年公務需求",y:"",t:TS.t,u:TS.u},
+ {b:"指標",v:"20+ 家",d:"台廠進入 Skydio、Parrot 非紅供應鏈",y:"",t:TS.t,u:TS.u},
+ {b:"產值",v:"129 億元",num:129,d:"經濟部估計值",y:"2025",t:TS.t,u:TS.u},
+ {b:"產值",v:"200 億元",num:200,d:"目標",y:"2026",t:TS.t,u:TS.u},
+ {b:"產值",v:"400 億元",num:400,d:"目標",y:"2030",t:TS.t,u:TS.u},
+ {b:"聯盟",v:"49 個",d:"亞創進駐單位（含政府、法人與學界）",y:"",t:SRC.space.t,u:SRC.space.u},
+ {b:"聯盟",v:"27 家",d:"亞洲無人機創新園區廠商協進會會員",y:"",t:SRC.tndia.t,u:SRC.tndia.u},
+ {b:"聯盟",v:"260+ 家",d:"台灣卓越無人機海外商機聯盟會員（2026 年 1 月）",y:"",t:SRC.tedi.t,u:SRC.tedi.u},
+ {b:"聯盟",v:"8 家",d:"大聯盟主席與創始副主席",y:"",t:SRC.tedi2.t,u:SRC.tedi2.u},
+ {b:"備註",v:"",d:"波蘭是臺灣無人機最大出口市場。",y:"",t:TS.t,u:TS.u}];
+let DATA_NOTE="內建資料（2026-10-27 整理）";
+function parseCSV(text){const rows=[];let row=[],f="",q=false;
+  for(let i=0;i<text.length;i++){const ch=text[i];
+    if(q){if(ch==='"'){if(text[i+1]==='"'){f+='"';i++;}else q=false;}else f+=ch;}
+    else if(ch==='"')q=true;else if(ch===','){row.push(f);f="";}
+    else if(ch==='\n'||ch==='\r'){if(ch==='\r'&&text[i+1]==='\n')i++;row.push(f);rows.push(row);row=[];f="";}
+    else f+=ch;}
+  if(f!==""||row.length){row.push(f);rows.push(row);}
+  const h=(rows.shift()||[]).map(x=>x.trim());
+  return rows.filter(r=>r.some(x=>x.trim()!=="")).map(r=>Object.fromEntries(h.map((k,i)=>[k,(r[i]||"").trim()])));}
+const isY=v=>/^(y|yes|是|v|✓|true|1)$/i.test((v||"").trim());
+const okColor=c=>/^#[0-9a-f]{3,8}$/i.test((c||"").trim())?c.trim():"#7A8A90";
+const okUrl=u=>/^https?:\/\//i.test((u||"").trim())?u.trim():"";
+function fromSheet(T){
+  const segs=T["環節"].filter(r=>r["代碼"]).map(r=>({id:r["代碼"],name:r["名稱"]||r["代碼"],en:r["英文"]||"",color:okColor(r["顏色"]),desc:r["說明"]||""}));
+  const aff={};T["聯盟"].filter(r=>r["代碼"]).forEach(r=>{const u=okUrl(r["來源網址"]);aff[r["代碼"]]={name:r["簡稱"]||r["代碼"],full:r["全名"]||"",link:u?{t:r["來源標題"]||r["簡稱"],u}:null};});
+  const kinds={"總部或據點":"hq","亞創進駐據點":"tenant"};
+  const cos=T["單位"].filter(r=>r["名稱"]&&segs.some(s=>s.id===r["環節代碼"])).map(r=>{
+    const lat=parseFloat(r["緯度"]),lon=parseFloat(r["經度"]),has=isFinite(lat)&&isFinite(lon)&&r["地點依據"]!=="待確認";
+    const affs=[["sp","亞創進駐"],["tn","協進會"],["td","大聯盟主席團"]].filter(([k,col])=>aff[k]&&isY(r[col])).map(([k])=>k);
+    const links=[];const sp=okUrl(r["亞創介紹頁"]);if(sp)links.push({t:"亞創進駐介紹",u:sp});
+    (r["來源"]||"").split(/\n/).forEach(line=>{const i=line.lastIndexOf("|");const t=i>=0?line.slice(0,i).trim():"",u=okUrl(i>=0?line.slice(i+1):line);if(u)links.push({t:t||u,u});});
+    affs.forEach(k=>{if(aff[k].link&&!(k==="sp"&&sp))links.push(aff[k].link);});
+    return {n:r["名稱"],en:r["英文名稱"]||"",s:r["環節代碼"],y:parseInt(r["成立年份"])||null,r:r["業務說明"]||"",aff:affs,star:isY(r["重點標示"]),links,
+      loc:has?{lat,lon,label:r["所在地"]||"",note:r["地點備註"]||"",kind:kinds[r["地點依據"]]||"hq"}:{label:"地點待確認",note:r["地點備註"]||"公開資料未查到所在地",kind:"unk"}};});
+  const lk=T["上下游"].map(r=>[r["上游代碼"],r["下游代碼"]]).filter(([a,b])=>segs.some(s=>s.id===a)&&segs.some(s=>s.id===b));
+  const stats=T["產業數據"].filter(r=>r["區塊"]).map(r=>({b:r["區塊"],v:r["顯示值"]||"",num:parseFloat(r["數字"]),d:r["說明"]||"",y:r["年份"]||"",t:r["來源標題"]||"",u:okUrl(r["來源網址"])}));
+  return {segs,aff,cos,lk,stats};}
+async function loadSheet(){
+  const id=(window.SHEET_ID||"").trim();if(!id)return;
+  const get=async name=>{const r=await fetch(`https://docs.google.com/spreadsheets/d/${encodeURIComponent(id)}/gviz/tq?tqx=out:csv&headers=1&sheet=${encodeURIComponent(name)}`);
+    if(!r.ok)throw new Error(name+" "+r.status);return parseCSV(await r.text());};
+  try{const names=["單位","環節","上下游","聯盟","產業數據"];const res=await Promise.all(names.map(get));const T={};names.forEach((n,i)=>T[n]=res[i]);
+    const D=fromSheet(T);if(!D.segs.length||!D.cos.length)throw new Error("試算表內容是空的");
+    SEGS=D.segs;AFF=D.aff;CO=D.cos;LINKS=D.lk;STATS=D.stats;
+    DATA_NOTE=`Google 試算表 · ${new Date().toLocaleString("zh-TW",{hour12:false})} 讀取`;
+  }catch(e){console.warn(e);DATA_NOTE="無法讀取試算表，顯示內建資料";}}
+window.__fromSheet=fromSheet;window.__parseCSV=parseCSV;
+await loadSheet();
+document.getElementById("dataNote").textContent="資料："+DATA_NOTE;
+CO.forEach(c=>{if(!c.y)c.y=YEAR[c.n]||null;});
+const segIdx=id=>SEGS.findIndex(s=>s.id===id);
+SEGS.forEach(s=>s.cos=CO.filter(c=>c.s===s.id));
+document.getElementById("sub").textContent=`${SEGS.length} 個供應鏈環節、${CO.length} 家代表廠商與機構，依實際所在地擺在臺灣地圖上，顏色代表供應鏈環節。點選建築看介紹。`;
+const affCount=k=>CO.filter(c=>c.aff.includes(k)).length;
+
+/* ---------- panel ---------- */
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const up=id=>LINKS.filter(l=>l[1]===id).map(l=>l[0]);
+const down=id=>LINKS.filter(l=>l[0]===id).map(l=>l[1]);
+$("p-seg").innerHTML=`<h3>供應鏈環節<small>可複選</small><button class="btn" id="segClear" hidden>清除篩選</button></h3>`+SEGS.map(s=>`<button class="seg" data-seg="${s.id}"><i style="background:${s.color}"></i><b>${esc(s.name)}</b><span class="n">${s.cos.length} 家</span><span class="d">${esc(s.desc)}</span></button>`).join("")+
+ `<p class="note">「依所在地」模式下，建築放在單位的總部或主要據點；「依環節」模式把同一環節集中，由北到南排成上游到下游。</p>`;
+const badges=c=>c.aff.map(k=>`<em class="bdg bdg-${k}">${esc(AFF[k].name)}</em>`).join("");
+$("p-co").innerHTML=`<div class="affs" role="group" aria-label="依聯盟篩選"><button class="btn" data-aff="" aria-pressed="true">全部 ${CO.length}</button>`+
+  Object.entries(AFF).map(([k,a])=>`<button class="btn" data-aff="${k}" aria-pressed="false">${esc(a.name)} ${affCount(k)}</button>`).join("")+`</div>`+
+  SEGS.map(s=>`<div class="grp"><h4><i style="background:${s.color}"></i>${esc(s.name)}</h4>`+
+  s.cos.map(c=>`<button class="co-item" data-co="${CO.indexOf(c)}" data-aff="${c.aff.join(" ")}"><span>${esc(c.n)}${c.star?" ★":""}<span class="bdgs">${badges(c)}</span></span><span>${c.loc.kind==="unk"?"待確認":esc(c.loc.kind==="tenant"?"嘉義（亞創）":c.loc.label.replace(/（.*?）/g,""))}</span></button>`).join("")+`</div>`).join("")+
+ `<p class="note">亞創進駐與協進會為兩份公開名單的全部成員。大聯盟逾 260 家會員的名單需登入才能查看，這裡只列公開報導中的主席與副主席。其他未標聯盟的廠商為補充的代表廠商。</p>`;
+const grp=b=>STATS.filter(x=>x.b===b);
+const statTiles=arr=>arr.length?`<div class="stats">${arr.map(x=>`<div class="stat"><b>${esc(x.v)}</b><span>${esc(x.d)}${x.y&&!x.d.includes(x.y)?`（${esc(x.y)}）`:""}</span></div>`).join("")}</div>`:"";
+const PV=grp("產值").filter(x=>isFinite(x.num));const PVmax=Math.max(1,...PV.map(x=>x.num));
+const statSrc=STATS.filter(x=>x.u).filter((x,i,a)=>a.findIndex(y=>y.u===x.u)===i);
+$("p-data").innerHTML=`<h3>臺灣無人機產業</h3>${statTiles(grp("指標"))}
+ ${grp("聯盟").length?`<h3>產業聚落與聯盟</h3>${statTiles(grp("聯盟"))}`:""}
+ ${PV.length?`<h3>產值（新台幣億元）</h3><div class="bars">${PV.map(x=>`<span class="y">${esc(x.y)}</span><div><div class="b" style="width:${x.num/PVmax*78}%"><span>${x.num}</span></div></div>`).join("")}</div>
+ <p class="note">${PV.map(x=>`${esc(x.y)} ${esc(x.d)}`).join("；")}。年份間距不等。</p>`:""}
+ ${grp("備註").map(x=>`<p class="note">${esc(x.d)}</p>`).join("")}
+ <h3 style="margin-top:16px">資料來源</h3>
+ <ol class="src">${statSrc.map(s=>`<li><a href="${s.u}" target="_blank" rel="noopener">${esc(s.t||s.u)}</a></li>`).join("")}</ol>
+ <p class="note">各單位的資料來源列在單位介紹卡中。</p>
+ <p class="note">連線代表環節之間的上下游關係，不代表特定公司之間的交易。所在地依公司登記、官網、徵才或新聞資料；總部查不到的亞創進駐單位標在嘉義亞創據點，其餘查不到的放在「地點待確認」。亞創進駐單位的描述摘自各單位在亞創網站的介紹；公開頁面未說明業務的單位，環節分類為暫定。</p>`;
+
+document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{
+  document.querySelectorAll(".tab").forEach(x=>{x.setAttribute("aria-selected",x===t);$(x.dataset.p).hidden=x!==t;});
+}));
+
+if(!window.THREE){$("loading").textContent="3D 元件載入失敗，請重新整理頁面。";return;}
+
+/* ---------- geometry of Taiwan ---------- */
+const COS=Math.cos(23.7*Math.PI/180), CELL=0.065;
+const toX=lon=>(lon-120.95)*COS/CELL, toZ=lat=>-(lat-23.65)/CELL;
+const POLY=[[121.53,25.30],[121.75,25.17],[122.0,25.01],[121.86,24.86],[121.83,24.62],[121.75,24.40],[121.62,24.18],[121.60,23.98],
+ [121.48,23.50],[121.37,23.10],[121.20,22.78],[120.98,22.45],[120.88,22.12],[120.84,21.90],[120.70,21.95],[120.62,22.30],
+ [120.45,22.45],[120.28,22.58],[120.15,22.95],[120.08,23.30],[120.12,23.65],[120.25,23.95],[120.45,24.25],[120.68,24.58],
+ [120.88,24.85],[121.03,25.06],[121.25,25.12],[121.40,25.24]];
+function inside(x,y){let c=false;for(let i=0,j=POLY.length-1;i<POLY.length;j=i++){const[xi,yi]=POLY[i],[xj,yj]=POLY[j];
+  if((yi>y)!==(yj>y)&&x<(xj-xi)*(y-yi)/(yj-yi)+xi)c=!c;}return c;}
+function spineDist(lon,lat){const ax=121.62*COS,ay=24.85,bx=120.86*COS,by=22.08,px=lon*COS,py=lat;
+  const dx=bx-ax,dy=by-ay;let t=((px-ax)*dx+(py-ay)*dy)/(dx*dx+dy*dy);const tc=Math.max(0,Math.min(1,t));
+  return {d:Math.hypot(px-(ax+tc*dx),py-(ay+tc*dy)),t};}
+let seed=7;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+const tiles=[];
+for(let lat=25.33;lat>21.85;lat-=CELL){for(let lon=119.98;lon<122.05;lon+=CELL/COS){
+  if(!inside(lon,lat))continue;
+  const {d,t}=spineDist(lon,lat);const taper=t<0?Math.max(0,1+t*6):t>1?Math.max(0,1-(t-1)*6):1;
+  const h=0.35+2.7*Math.exp(-Math.pow(d/0.2,2))*taper*(0.75+0.25*Math.sin(lat*31)+0.0)+0.12*rnd();
+  tiles.push({lon,lat,x:toX(lon),z:toZ(lat),h,seg:0});
+}}
+
+{ // split lowland into north→south bands, sized by how many buildings each segment holds
+  const low=tiles.filter(t=>t.h<1.25).sort((a,b)=>b.lat-a.lat);
+  const W=SEGS.reduce((a,s)=>a+s.cos.length+3,0);let cum=0;const BANDS=[];
+  SEGS.forEach((s,i)=>{cum+=s.cos.length+3;BANDS.push(i===SEGS.length-1?-90:low[Math.min(low.length-1,Math.round(cum/W*low.length))].lat+1e-6);});
+  tiles.forEach(t=>t.seg=BANDS.findIndex(b=>t.lat>b));
+}
+/* ---------- scene ---------- */
+const stage=$("stage"),canvas=$("gl");
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+const scene=new THREE.Scene();
+const camera=new THREE.OrthographicCamera(-1,1,1,-1,-500,500);
+scene.add(new THREE.HemisphereLight(0xffffff,0x667788,0.75));
+const sun=new THREE.DirectionalLight(0xffffff,0.75);sun.position.set(-30,50,25);sun.castShadow=true;
+sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-45,right:45,top:45,bottom:-45,near:1,far:200});
+scene.add(sun);
+const seaMat=new THREE.MeshStandardMaterial({roughness:1});
+const sea=new THREE.Mesh(new THREE.PlaneGeometry(600,600),seaMat);sea.rotation.x=-Math.PI/2;sea.position.y=0.12;sea.receiveShadow=true;scene.add(sea);
+let grid=null;
+
+const tileGeo=new THREE.BoxGeometry(0.97,1,0.97);tileGeo.translate(0,0.5,0);
+const tileMat=new THREE.MeshStandardMaterial({roughness:0.95,flatShading:true});
+const tileMesh=new THREE.InstancedMesh(tileGeo,tileMat,tiles.length);
+tileMesh.receiveShadow=true;tileMesh.castShadow=true;scene.add(tileMesh);
+const dummy=new THREE.Object3D();
+function setTile(i,k){const t=tiles[i];dummy.position.set(t.x,0,t.z);dummy.scale.set(1,Math.max(0.001,t.h*k),1);dummy.updateMatrix();tileMesh.setMatrixAt(i,dummy.matrix);}
+tiles.forEach((t,i)=>setTile(i,1));
+
+/* buildings */
+const used=[];const bGeo=new THREE.BoxGeometry(0.62,1,0.62);bGeo.translate(0,0.5,0);
+const buildings=[];
+SEGS.forEach((s,si)=>{
+  const band=tiles.filter(t=>t.seg===si);
+  const cand=band.filter(t=>t.h<1.25).sort((a,b)=>a.x-b.x);
+  if(!cand.length)cand.push(...band);
+  const minX=cand.length?cand[0].x:0;let pool=cand.filter(t=>t.x>minX+0.8);if(!pool.length)pool=cand;
+  s.cos.forEach((c,k)=>{
+    let best=null,bs=-1e9;
+    for(const sp of [1.9,1.4,1.0]){for(const t of pool){if(used.some(u=>Math.hypot(u.x-t.x,u.z-t.z)<sp))continue;
+      const sc=-Math.abs(t.x-(minX+2.2+((k%3)*1.9)))-0.3*rnd();if(sc>bs){bs=sc;best=t;}}if(best)break;}
+    if(!best)best=band[k%band.length];used.push(best);
+    const ht=1.3+((c.n.length*7+k*3)%5)*0.3+(c.star?1.0:0)+(c.aff.includes("td")?0.5:0);
+    const m=new THREE.Mesh(bGeo,new THREE.MeshStandardMaterial({color:s.color,roughness:0.55,transparent:true}));
+    m.scale.y=ht;m.position.set(best.x,best.h,best.z);m.castShadow=true;m.userData={ci:CO.indexOf(c),ht,g:1,top:best.h+ht,base:best.h,seg:new THREE.Vector3(best.x,best.h,best.z)};
+    scene.add(m);buildings.push(m);c.mesh=m;
+  });
+  const xs=s.cos.length?s.cos.map(c=>c.mesh.position):[new THREE.Vector3(minX+2,0,(band[0]||{z:0}).z)];
+  s.center=new THREE.Vector3(xs.reduce((a,p)=>a+p.x,0)/xs.length,0,xs.reduce((a,p)=>a+p.z,0)/xs.length);
+  s.center.y=Math.max(1.5,...s.cos.map(c=>c.mesh.userData.top));
+});
+/* geographic positions */
+const gUsed=new Set(),unk=[];
+CO.map((c,i)=>i).sort((a,b)=>(CO[a].loc.kind==="hq"?0:1)-(CO[b].loc.kind==="hq"?0:1)).forEach(i=>{const c=CO[i];
+  if(c.loc.kind==="unk"){unk.push(c);return;}
+  const tx=toX(c.loc.lon),tz=toZ(c.loc.lat);let best=null,bd=1e9;
+  for(const t of tiles){if(gUsed.has(t))continue;const d=Math.hypot(t.x-tx,t.z-tz)+(t.h>1.4?2:0);if(d<bd){bd=d;best=t;}}
+  gUsed.add(best);c.mesh.userData.geo=new THREE.Vector3(best.x,best.h,best.z);});
+const PLAT={x:toX(119.5),z:toZ(23.85)},prow=Math.ceil(unk.length/3);
+const plat=new THREE.Mesh(new THREE.BoxGeometry(5.6,0.45,prow*1.7+1.2),new THREE.MeshStandardMaterial({roughness:0.9,transparent:true}));
+plat.position.set(PLAT.x,0.225,PLAT.z);plat.receiveShadow=true;scene.add(plat);
+unk.forEach((c,k)=>c.mesh.userData.geo=new THREE.Vector3(PLAT.x+(k%3-1)*1.7,0.45,PLAT.z+(Math.floor(k/3)-(prow-1)/2)*1.7));
+let mode="geo";
+buildings.forEach(b=>b.position.copy(b.userData[mode]));
+/* city tallies: each building counts toward its nearest city */
+const cityLab=CITIES.map(([n,la,lo])=>({n,x:toX(lo),z:toZ(la),cos:[]}));
+cityLab.push({n:"地點待確認",x:PLAT.x,z:PLAT.z,cos:[],unk:true});
+CO.forEach((c,i)=>{if(c.loc.kind==="unk"){cityLab[cityLab.length-1].cos.push(i);return;}
+  const g=c.mesh.userData.geo;let best=null,bd=1e9;cityLab.forEach(L=>{if(L.unk)return;const d=Math.hypot(L.x-g.x,L.z-g.z);if(d<bd){bd=d;best=L;}});best.cos.push(i);});
+/* beacon for starred */
+const starCo=CO.find(c=>c.star)||null;
+const ring=new THREE.Mesh(new THREE.TorusGeometry(0.9,0.07,8,40),new THREE.MeshBasicMaterial({color:starCo?SEGS[segIdx(starCo.s)].color:"#888888",transparent:true}));ring.visible=!!starCo;
+ring.rotation.x=Math.PI/2;scene.add(ring);
+
+/* flow links */
+/* endpoints: segment district in 依環節, centroid of the segment's real locations in 依所在地 */
+function segPos(s,m){
+  const ps=m==="geo"?s.cos.filter(c=>c.loc.kind!=="unk").map(c=>c.mesh.userData):[];
+  if(!ps.length)return s.center.clone();
+  const p=new THREE.Vector3();ps.forEach(u=>p.add(u.geo));p.multiplyScalar(1/ps.length);p.y=Math.max(...ps.map(u=>u.geo.y+u.ht));return p;}
+const dotGeo=new THREE.SphereGeometry(1,12,10);
+const flows=LINKS.map(([a,b])=>{
+  const line=new THREE.Line(new THREE.BufferGeometry(),new THREE.LineBasicMaterial({transparent:true,opacity:0.4}));scene.add(line);
+  const dots=[];[0,1/3,2/3].forEach(o=>[0,0.014,0.028].forEach((lag,j)=>{
+    const d=new THREE.Mesh(dotGeo,new THREE.MeshBasicMaterial({color:SEGS[segIdx(a)].color,transparent:true,depthWrite:false}));
+    d.scale.setScalar([0.27,0.19,0.12][j]);scene.add(d);dots.push({d,o,lag,fade:[1,0.6,0.3][j]});}));
+  return {a,b,line,dots};
+});
+function buildFlows(m){flows.forEach((f,i)=>{
+  const A=segPos(SEGS[segIdx(f.a)],m),B=segPos(SEGS[segIdx(f.b)],m);
+  A.y+=0.6;B.y+=0.6;const mid=A.clone().add(B).multiplyScalar(0.5);mid.x+=(i%2?3:-3);mid.y+=5+A.distanceTo(B)*0.18;
+  f.curve=new THREE.QuadraticBezierCurve3(A,mid,B);f.line.geometry.setFromPoints(f.curve.getPoints(64));});}
+
+buildFlows(mode);
+
+/* ---------- labels ---------- */
+const labels=$("labels");
+SEGS.forEach(s=>{const el=document.createElement("button");el.className="lab dist";el.type="button";
+  el.innerHTML=`<i style="background:${s.color}"></i>${esc(s.name)}<small>${s.cos.length}</small>`;
+  el.addEventListener("click",e=>{e.stopPropagation();stopTour();filterSeg(s.id,true);});
+  labels.appendChild(el);s.label=el;});
+cityLab.forEach(L=>{if(!L.cos.length&&!L.unk)L.empty=true;const el=document.createElement(L.cos.length?"button":"div");el.className="lab city"+(L.cos.length?"":" empty");
+  if(L.cos.length){el.type="button";el.innerHTML=`${L.n}<small>${L.cos.length}</small>`;el.addEventListener("click",e=>{e.stopPropagation();stopTour();focusCity(L);});}
+  else el.textContent=L.n;labels.appendChild(el);L.label=el;});
+CO.forEach(c=>{const el=document.createElement("div");el.className="lab co"+(c.star?" star":"");el.textContent=c.n+(c.star?" ★":"");
+  if(c.star)el.style.color=SEGS[segIdx(c.s)].color;labels.appendChild(el);c.label=el;el.style.opacity=0;});
+
+/* ---------- theme ---------- */
+function tok(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+function applyTheme(){
+  const seaC=new THREE.Color(tok("--sea"));scene.background=seaC;seaMat.color=seaC;
+  if(grid)scene.remove(grid);grid=new THREE.GridHelper(300,60,tok("--grid"),tok("--grid"));grid.position.y=0.14;
+  grid.material.transparent=true;grid.material.opacity=0.35;scene.add(grid);
+  const lo=new THREE.Color(tok("--land-lo")),hi=new THREE.Color(tok("--land-hi")),c=new THREE.Color();
+  tiles.forEach((t,i)=>{c.copy(lo).lerp(hi,Math.min(1,Math.max(0,(t.h-0.4)/2.3)));if(mode==="seg")c.lerp(new THREE.Color(SEGS[t.seg].color),0.16);tileMesh.setColorAt(i,c);});
+  plat.material.color=lo.clone().lerp(hi,0.3);
+  tileMesh.instanceColor.needsUpdate=true;
+  const fc=new THREE.Color(tok("--flow"));flows.forEach(f=>f.line.material.color=fc);
+}
+applyTheme();
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change",applyTheme);
+new MutationObserver(applyTheme).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+
+/* ---------- camera & controls ---------- */
+const view={az:-0.42,el:0.92,tx:0,ty:0,tz:2,zoom:1};
+const HOME={tx:0,tz:2,zoom:1};
+function updateCam(){
+  const w=stage.clientWidth,h=stage.clientHeight,asp=w/h;
+  let half=31;if(asp<1)half=31/Math.max(asp,0.55)*0.8;half/=view.zoom;
+  Object.assign(camera,{left:-half*asp,right:half*asp,top:half,bottom:-half});camera.updateProjectionMatrix();
+  const d=120;camera.position.set(view.tx+d*Math.cos(view.el)*Math.sin(view.az),view.ty+d*Math.sin(view.el),view.tz+d*Math.cos(view.el)*Math.cos(view.az));
+  camera.lookAt(view.tx,view.ty,view.tz);
+}
+function resize(){renderer.setSize(stage.clientWidth,stage.clientHeight,false);updateCam();}
+new ResizeObserver(resize).observe(stage);resize();
+
+const ptrs=new Map();let moved=0,pinch0=0,zoom0=1;
+canvas.addEventListener("pointerdown",e=>{canvas.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});moved=0;
+  if(ptrs.size===2){const [p,q]=[...ptrs.values()];pinch0=Math.hypot(p.x-q.x,p.y-q.y);zoom0=view.zoom;}canvas.classList.add("drag");});
+canvas.addEventListener("pointermove",e=>{
+  if(!ptrs.has(e.pointerId)){hover(e);return;}
+  const p=ptrs.get(e.pointerId),dx=e.clientX-p.x,dy=e.clientY-p.y;p.x=e.clientX;p.y=e.clientY;moved+=Math.abs(dx)+Math.abs(dy);
+  if(ptrs.size===1){view.az-=dx*0.006;view.el=Math.min(1.35,Math.max(0.38,view.el+dy*0.004));stopTour();}
+  else if(ptrs.size===2){const [a,b]=[...ptrs.values()];view.zoom=Math.min(5,Math.max(0.6,zoom0*Math.hypot(a.x-b.x,a.y-b.y)/pinch0));}
+});
+function endPtr(e){if(!ptrs.has(e.pointerId))return;ptrs.delete(e.pointerId);canvas.classList.remove("drag");if(moved<6&&ptrs.size===0)pick(e);}
+canvas.addEventListener("pointerup",endPtr);canvas.addEventListener("pointercancel",e=>{ptrs.delete(e.pointerId);canvas.classList.remove("drag");});
+canvas.addEventListener("wheel",e=>{e.preventDefault();view.zoom=Math.min(5,Math.max(0.6,view.zoom*Math.exp(-e.deltaY*0.0012)));},{passive:false});
+
+const ray=new THREE.Raycaster(),ndc=new THREE.Vector2();
+function hit(e){const r=canvas.getBoundingClientRect();ndc.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);
+  ray.setFromCamera(ndc,camera);const h=ray.intersectObjects(buildings).find(x=>x.object.visible);return h?h.object:null;}
+let hovered=null;
+function hover(e){const o=hit(e);hovered=o?o.userData.ci:null;canvas.style.cursor=o?"pointer":"";}
+function pick(e){const o=hit(e);if(o){stopTour();select(o.userData.ci);}else if(sel!==null){closeCard();}}
+
+/* ---------- state ---------- */
+let sel=null,segs=new Set(),affF="",cityF=null,yearF=null,labAll=false,flowOn=true,viewMode="island";
+function focus(x,z,zoom,dur=1){const o={tx:x,tz:z,zoom};
+  if(reduce){Object.assign(view,o);return;}gsap.to(view,{...o,duration:dur,ease:"power2.inOut",overwrite:"auto"});}
+function activeSet(){return sel!==null?new Set([CO[sel].s]):segs;}
+function isOn(ci,a){const c=CO[ci];return (!a.size||a.has(c.s))&&(!affF||c.aff.includes(affF))&&(!cityF||cityF.cos.includes(ci));}
+/* toggle=true adds/removes the segment (multi-select); otherwise it becomes the only one */
+function filterSeg(id,toggle){sel=null;cityF=null;$("card").hidden=true;
+  if(toggle){if(segs.has(id))segs.delete(id);else segs.add(id);}else segs=new Set([id]);
+  if(mode==="seg"){if(segs.has(id)){const s=SEGS[segIdx(id)];focus(s.center.x,s.center.z,segs.size>1?1.3:1.9);}else if(!segs.size)focus(HOME.tx,HOME.tz,HOME.zoom);}
+  markLists();}
+function focusCity(L){sel=null;segs=new Set();cityF=L;$("card").hidden=true;focus(L.x,L.z,L.cos.length>12?2.6:2.2);markLists();}
+function setMode(m){if(m===mode)return;mode=m;cityF=null;
+  document.querySelectorAll("[data-mode]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.mode===m));
+  buildings.forEach(b=>{const p=b.userData[m];if(reduce)b.position.copy(p);else gsap.to(b.position,{x:p.x,y:p.y,z:p.z,duration:1.2,ease:"power2.inOut",delay:Math.random()*0.25});});
+  applyTheme();buildFlows(m);$("hint").textContent=m==="geo"?"建築依單位所在地擺放 · 點縣市看當地單位":"由北到南為上游到下游 · 點環節名稱看分區";
+  if(sel!==null){const p=CO[sel].mesh.userData[m];focus(p.x,p.z,2.4);}else if(segs.size&&m==="seg"){const s=SEGS[segIdx([...segs].pop())];focus(s.center.x,s.center.z,1.9);}else focus(HOME.tx,HOME.tz,HOME.zoom);}
+document.querySelectorAll("[data-mode]").forEach(b=>b.addEventListener("click",()=>setMode(b.dataset.mode)));
+function select(ci){sel=ci;segs=new Set();cityF=null;const c=CO[ci],s=SEGS[segIdx(c.s)];const p=c.mesh.userData[mode];focus(p.x,p.z,2.4);
+  const ups=up(c.s),dns=down(c.s);
+  const rel=(arr)=>arr.length?arr.map(id=>`<button data-seg="${id}">${SEGS[segIdx(id)].name}</button>`).join(""):"—";
+  $("card").innerHTML=`<button class="x" aria-label="關閉">×</button>
+   <span class="chip"><i style="background:${s.color}"></i>${esc(s.name)}</span>
+   <h2>${esc(c.n)}${c.star?" ★":""}</h2><p class="en">${esc(c.en||" ")}</p>${c.aff.length?`<div class="bdgs">${badges(c)}</div>`:""}
+   <p>${esc(c.r)}</p>
+   <dl class="kv"><dt>所在地</dt><dd>${esc(c.loc.label)}${c.loc.note?`<br><small style="color:var(--muted)">${esc(c.loc.note)}</small>`:""}</dd>
+   <dt>上游環節</dt><dd class="rel">${rel(ups)}</dd><dt>下游環節</dt><dd class="rel">${rel(dns)}</dd>
+   ${(()=>{const L=c.links.filter((x,i,a)=>x&&x.u&&a.findIndex(y=>y.u===x.u)===i);
+     return L.length?`<dt>來源</dt><dd>${L.map(x=>`<a href="${x.u}" target="_blank" rel="noopener">${esc(x.t)}</a>`).join("<br>")}</dd>`:"";})()}</dl>`;
+  $("card").hidden=false;$("card").querySelector(".x").onclick=closeCard;
+  $("card").querySelectorAll(".rel button").forEach(b=>b.onclick=()=>filterSeg(b.dataset.seg));markLists();}
+function closeCard(){sel=null;$("card").hidden=true;markLists();}
+function markLists(){const a=activeSet();document.querySelectorAll(".seg").forEach(b=>b.classList.toggle("on",a.has(b.dataset.seg)));
+  document.querySelectorAll("[data-lvseg]").forEach(b=>b.setAttribute("aria-pressed",segs.has(b.dataset.lvseg)));
+  $("segClear").hidden=!segs.size;renderList();}
+document.querySelectorAll(".seg").forEach(b=>b.addEventListener("click",()=>{stopTour();filterSeg(b.dataset.seg,true);}));
+$("segClear").onclick=()=>{stopTour();reset();};
+document.querySelectorAll(".co-item").forEach(b=>b.addEventListener("click",()=>{stopTour();select(+b.dataset.co);
+  if(innerWidth<900)stage.scrollIntoView({behavior:"smooth",block:"start"});}));
+function reset(){sel=null;segs=new Set();cityF=null;$("card").hidden=true;focus(HOME.tx,HOME.tz,HOME.zoom);markLists();}
+$("resetBtn").onclick=()=>{stopTour();reset();};
+function setAff(k){affF=k;document.querySelectorAll(".affs .btn").forEach(b=>b.setAttribute("aria-pressed",b.dataset.aff===k));
+  document.querySelectorAll(".co-item").forEach(b=>b.hidden=!!k&&!b.dataset.aff.split(" ").includes(k));
+  document.querySelectorAll(".grp").forEach(g=>g.hidden=![...g.querySelectorAll(".co-item")].some(b=>!b.hidden));}
+document.querySelectorAll(".affs .btn").forEach(b=>b.addEventListener("click",()=>setAff(b.dataset.aff)));
+
+/* toggles */
+function press(id,on){$(id).setAttribute("aria-pressed",on);}
+$("labBtn").onclick=()=>{labAll=!labAll;press("labBtn",labAll);};
+$("flowBtn").onclick=()=>{flowOn=!flowOn;press("flowBtn",flowOn);};
+
+/* story tour：一架無人機的誕生 */
+const STORY={
+ chip:["THE BRAIN","飛控電腦即時讀取感測器、計算姿態；影像晶片處理鏡頭畫面。臺灣的半導體實力，是一架無人機的「大腦」。"],
+ comm:["THE NERVES","影像傳輸、射頻元件、雷達與 GPS 天線，讓無人機和地面保持連線，也知道自己在哪裡。"],
+ power:["THE HEART","電芯、電池模組與電池管理系統（BMS）決定能飛多久、多遠，是無人機的「心臟」。"],
+ motor:["THE MUSCLE","無刷馬達與電子調速器把電力轉成推力，讓機體穩穩升空。"],
+ optic:["THE EYES","光學鏡頭與 EO/IR 攝影機是無人機的「眼睛」，負責測繪、巡檢與偵察。"],
+ struct:["THE BONES","碳纖維複材機體與精密加工，讓機身輕巧又堅固。"],
+ system:["ASSEMBLY","上游零組件在這裡匯流：整機廠設計、組裝與系統整合，一架無人機正式成形。"],
+ service:["TAKE-OFF","起飛之後：農業噴灑、電力巡線、航拍測繪、群飛表演與人才培訓。"],
+ test:["BACKUP","研究法人與大學負責研發、檢測與驗證，替產業打底。"],
+ gov:["THE PUSH","主管機關、園區與產業聯盟訂規則、給場域，也帶著廠商走向海外。"]};
+const STEP_MS=7000;let story=null;
+const pad=n=>String(n).padStart(2,"0");
+function storySteps(){
+  const ord=Object.keys(STORY),rank=id=>{const i=ord.indexOf(id);return i<0?99:i;};
+  const pv=grp("產值").filter(x=>x.v);
+  return [{k:"PROLOGUE",h:"一架無人機的誕生",p:`從一顆晶片到飛上天空，一架無人機要經過 ${SEGS.length} 個供應鏈環節。跟著光點，看零組件怎麼在臺灣島上匯流。`},
+    ...[...SEGS].sort((a,b)=>rank(a.id)-rank(b.id)).map(s=>{const t=STORY[s.id];
+      const reps=[...s.cos].sort((x,y)=>(y.star?2:0)+(y.aff.includes("td")?1:0)-(x.star?2:0)-(x.aff.includes("td")?1:0)).slice(0,4).map(c=>c.n);
+      return {seg:s.id,k:t?t[0]:(s.en||"").toUpperCase(),h:s.name,p:t?t[1]:s.desc,co:reps};}),
+    {k:"EPILOGUE",h:"全島連線",p:`${CO.length} 家廠商與機構，連成一座無人機供應鏈島。`+(pv.length?`產值：${pv.map(x=>`${x.y} 年 ${x.v}${x.d?`（${x.d}）`:""}`).join("、")}。`:"")}];}
+function syncTourBtn(){const p=!!(story&&story.playing);press("tourBtn",p);$("tourBtn").textContent=p?"❚❚ 暫停":"▶ 導覽";
+  const b=$("story").querySelector('[data-s="play"]');if(b)b.textContent=p?"❚❚ 暫停":"▶ 播放";}
+function storyGo(i){story.i=i;story.t=0;const st=story.steps[i];
+  if(st.seg)filterSeg(st.seg);else reset();
+  $("story").innerHTML=`<div class="k"><span>${esc(st.k)}</span><span>${pad(i+1)} / ${pad(story.steps.length)}</span></div>
+   <h2>${esc(st.h)}</h2><p>${esc(st.p)}</p>${st.co&&st.co.length?`<p class="who">代表單位：${st.co.map(esc).join("、")}</p>`:""}
+   <div class="bar"><i id="sbar"></i></div>
+   <div class="ctl"><button class="btn" data-s="prev" aria-label="上一步"${i?"":" disabled"}>‹</button><button class="btn" data-s="play"></button><button class="btn" data-s="next" aria-label="下一步"${i<story.steps.length-1?"":" disabled"}>›</button><button class="btn" data-s="replay">↺ 重播</button><button class="btn" data-s="exit">✕ 離開</button></div>`;
+  syncTourBtn();}
+function storyPlay(on){if(!story)return;if(on&&story.i===story.steps.length-1&&story.t>=STEP_MS){storyGo(0);}story.playing=on;syncTourBtn();}
+function storyStart(){setView("island");story={steps:storySteps(),i:0,t:0,playing:true};$("story").hidden=false;stage.classList.add("storying");
+  if(mode!=="seg")setMode("seg");storyGo(0);}
+function storyExit(){story=null;$("story").hidden=true;stage.classList.remove("storying");syncTourBtn();reset();}
+function stopTour(){if(story&&story.playing)storyPlay(false);}
+$("story").addEventListener("click",e=>{const b=e.target.closest("[data-s]");if(!b||!story)return;const a=b.dataset.s;
+  if(a==="exit")storyExit();else if(a==="replay"){storyGo(0);storyPlay(true);}else if(a==="play")storyPlay(!story.playing);
+  else{const j=story.i+(a==="next"?1:-1);if(j>=0&&j<story.steps.length)storyGo(j);}});
+$("tourBtn").onclick=()=>{if(!story)storyStart();else storyPlay(!story.playing);};
+
+/* list view */
+let lvQ="",lvSort="seg";
+$("listview").innerHTML=`<div class="lv-bar"><input type="search" id="lvQ" placeholder="搜尋名稱、業務或地點" aria-label="搜尋單位">
+  <select id="lvSort" aria-label="排序"><option value="seg">依環節</option><option value="name">依名稱</option><option value="year">依成立年份</option></select>
+  <span class="n" id="lvN"></span></div>
+ <div class="lv-chips" role="group" aria-label="篩選環節（可複選）">${SEGS.map(s=>`<button class="btn" data-lvseg="${s.id}" aria-pressed="false"><i style="background:${s.color}"></i>${esc(s.name)}</button>`).join("")}</div>
+ <div class="lv-grid" id="lvGrid"></div>`;
+$("lvQ").addEventListener("input",e=>{lvQ=e.target.value.trim().toLowerCase();renderList();});
+$("lvSort").addEventListener("change",e=>{lvSort=e.target.value;renderList();});
+$("listview").querySelectorAll("[data-lvseg]").forEach(b=>b.addEventListener("click",()=>filterSeg(b.dataset.lvseg,true)));
+$("lvGrid").addEventListener("click",e=>{const b=e.target.closest("[data-co]");if(!b)return;setView("island");select(+b.dataset.co);});
+function renderList(){if(viewMode!=="list")return;
+  const it=CO.map((c,i)=>({c,i})).filter(({c})=>(!segs.size||segs.has(c.s))&&(!affF||c.aff.includes(affF))&&(!lvQ||[c.n,c.en,c.r,c.loc.label].join(" ").toLowerCase().includes(lvQ)));
+  const nm=(a,b)=>a.c.n.localeCompare(b.c.n,"zh-Hant");
+  it.sort(lvSort==="name"?nm:lvSort==="year"?(a,b)=>(a.c.y||9999)-(b.c.y||9999)||nm(a,b):(a,b)=>segIdx(a.c.s)-segIdx(b.c.s));
+  $("lvN").textContent=`${it.length} / ${CO.length} 家`;
+  $("lvGrid").innerHTML=it.map(({c,i})=>{const s=SEGS[segIdx(c.s)];
+    return `<button class="lv-item" style="--c:${s.color}" data-co="${i}"><small>${esc(s.name)}</small><b>${esc(c.n)}${c.star?" ★":""}</b><span>${esc(c.r)}</span><small>${esc(c.loc.kind==="unk"?"地點待確認":c.loc.label)}${c.y?` · ${c.y} 年成立`:""}</small></button>`;}).join("")||`<p class="note">沒有符合的單位。</p>`;}
+
+/* timeline */
+const yrs=CO.map(c=>c.y).filter(Boolean),Y1=Math.max(new Date().getFullYear(),...yrs),Y0=yrs.length?Math.min(...yrs):Y1;
+const tR=$("tRange");tR.min=Y0;tR.max=Y1;tR.value=Y1;let tTimer=null;
+function setYear(y){yearF=y;tR.value=y;$("tYear").textContent=y;
+  const born=CO.filter(c=>c.y===y).map(c=>c.n),n=CO.filter(c=>c.y&&c.y<=y).length,miss=CO.length-yrs.length;
+  const ms=STATS.filter(x=>x.y===String(y)&&x.v).map(x=>`${x.b} ${x.v}${x.d?`（${x.d}）`:""}`);
+  $("tTick").innerHTML=`已成立 <b>${n}</b> 家`+(born.length?` · 本年成立：<b>${born.map(esc).join("、")}</b>`:"")+(ms.length?` · ${ms.map(esc).join("、")}`:"")+
+    (miss?`<br>另有 ${miss} 家成立年份待補，時間軸上不顯示。`:"");}
+function stopTime(){if(tTimer){clearTimeout(tTimer);tTimer=null;}$("tPlay").textContent="▶";$("tPlay").setAttribute("aria-label","播放時間軸");}
+function tick(){if(yearF>=Y1){stopTime();return;}setYear(yearF+1);tTimer=setTimeout(tick,CO.some(c=>c.y===yearF)?700:90);}
+$("tPlay").onclick=()=>{if(tTimer){stopTime();return;}if(yearF>=Y1)setYear(Y0-1);$("tPlay").textContent="❚❚";$("tPlay").setAttribute("aria-label","暫停時間軸");tick();};
+tR.addEventListener("input",()=>{stopTime();setYear(+tR.value);});
+
+/* views：島嶼／清單／時間 */
+function setView(v){if(v===viewMode)return;viewMode=v;stage.dataset.view=v;
+  document.querySelectorAll("[data-view]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.view===v));
+  if(v!=="island"&&story)storyExit();
+  $("listview").hidden=v!=="list";$("timebar").hidden=v!=="time";
+  stopTime();if(v==="time"){setYear(Y0);$("tPlay").click();}else yearF=null;
+  if(v==="list"){$("card").hidden=true;sel=null;renderList();}}
+document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.view)));
+
+/* onboarding */
+const GUIDE=[["HELLO, TAIWAN UAV","歡迎來到無人機供應鏈臺灣島",`島上每一棟建築是一家廠商或機構，共 ${CO.length} 家，顏色代表它所屬的供應鏈環節。`],
+ ["01 · 操作","拖曳、縮放、點選","拖曳可以旋轉視角，滾輪或雙指可以縮放。點建築看單位介紹，點縣市名稱看當地有哪些單位。"],
+ ["02 · 擺放","依所在地／依環節","「依所在地」把建築放在總部位置；「依環節」把同一環節集中，由北到南排成上游到下游。切換時建築會飛到新位置。"],
+ ["03 · 工具","名牌、流向、篩選","「名牌」顯示所有單位名稱，「流向」開關供應鏈上的光點。右側「環節」可以複選，只看你關心的環節。"],
+ ["04 · 檢視","島嶼、清單、時間","「清單」可以搜尋、排序所有單位；「時間」播放年份，看產業一年一年長出來。"],
+ ["READY","準備起飛","建議先看一遍導覽「一架無人機的誕生」，大約一分半鐘。"]];
+let gI=0;const seen=()=>{try{return localStorage.getItem("uavGuide")==="1";}catch(e){return true;}};
+function guideShow(i){gI=i;const [k,h,p]=GUIDE[i],last=i===GUIDE.length-1;
+  $("gBox").innerHTML=`<div class="k">${esc(k)}</div><h2 id="gH">${esc(h)}</h2><p>${esc(p)}</p>
+   <div class="dots" aria-hidden="true">${GUIDE.map((_,j)=>`<i class="${j===i?"on":""}"></i>`).join("")}</div>
+   <div class="ctl">${last?`<button class="btn" data-g="close">自己逛逛</button><span><button class="btn" data-g="prev">上一步</button><button class="btn pri" data-g="tour">▶ 開始導覽</button></span>`
+     :`<button class="btn" data-g="close">略過</button><span>${i?`<button class="btn" data-g="prev">上一步</button>`:""}<button class="btn pri" data-g="next">下一步</button></span>`}</div>`;
+  $("guide").hidden=false;$("gBox").querySelector(".pri").focus();}
+function guideClose(){$("guide").hidden=true;try{localStorage.setItem("uavGuide","1");}catch(e){}}
+$("gBox").addEventListener("click",e=>{const b=e.target.closest("[data-g]");if(!b)return;const a=b.dataset.g;
+  if(a==="next")guideShow(gI+1);else if(a==="prev")guideShow(gI-1);else{guideClose();if(a==="tour")storyStart();else $("helpBtn").focus();}});
+$("guide").addEventListener("click",e=>{if(e.target===$("guide"))guideClose();});
+document.addEventListener("keydown",e=>{if($("guide").hidden)return;
+  if(e.key==="Escape")guideClose();else if(e.key==="ArrowRight"&&gI<GUIDE.length-1)guideShow(gI+1);else if(e.key==="ArrowLeft"&&gI>0)guideShow(gI-1);});
+$("helpBtn").onclick=()=>{stopTour();guideShow(0);};
+stage.dataset.view="island";
+
+/* ---------- intro & loop ---------- */
+const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+let introT=reduce?99:0;const INTRO=2.2;
+if(!reduce){buildings.forEach((b,i)=>{const y=b.position.y;b.position.y=y+25;b.material.opacity=0;
+  gsap.to(b.position,{y,duration:0.7,delay:1.5+i*0.018,ease:"bounce.out"});gsap.to(b.material,{opacity:1,duration:0.3,delay:1.5+i*0.018});});}
+setTimeout(()=>{$("loading").style.opacity=0;},reduce?0:900);
+if(!seen())setTimeout(()=>guideShow(0),reduce?0:2600);
+const clock=new THREE.Clock();const v=new THREE.Vector3();
+function frame(){
+  const dt=Math.min(clock.getDelta(),0.05),time=clock.elapsedTime;
+  if(introT<INTRO+1){introT+=dt;tiles.forEach((t,i)=>{const delay=(25.35-t.lat)/3.5*1.3;let k=Math.min(1,Math.max(0,(introT-delay)/0.5));k=1-Math.pow(1-k,3);setTile(i,k);});tileMesh.instanceMatrix.needsUpdate=true;}
+  updateCam();
+  if(story&&story.playing){story.t+=dt*1000;const bar=$("sbar");if(bar)bar.style.width=Math.min(100,story.t/STEP_MS*100)+"%";
+    if(story.t>=STEP_MS){if(story.i<story.steps.length-1)storyGo(story.i+1);else storyPlay(false);}}
+  if(viewMode==="list"){requestAnimationFrame(frame);return;}
+  const a=activeSet();
+  const geo=mode==="geo";
+  flows.forEach(f=>{const on=a.size&&(a.has(f.a)||a.has(f.b));const op=!flowOn?0:a.size?(on?0.85:0.06):(geo?0.25:0.4);
+    f.line.material.opacity+= (op-f.line.material.opacity)*0.15;f.line.visible=f.line.material.opacity>0.01;
+    const dop=!flowOn?0:a.size?(on?1:0.04):0.75;
+    f.dots.forEach(({d,o,lag,fade})=>{const tt=reduce?o:((time*0.16+o-lag)%1+1)%1;d.position.copy(f.curve.getPoint(tt));d.material.opacity=dop*fade;d.visible=flowOn&&!(reduce&&lag);});});
+  if(introT>3.2)buildings.forEach(b=>{const ci=b.userData.ci,c=CO[ci];const t=isOn(ci,a)?1:0.2;b.material.opacity+=(t-b.material.opacity)*0.15;
+    b.material.emissive.setHex(ci===sel||ci===hovered?0x333333:0x000000);
+    const g=yearF===null||(c.y&&c.y<=yearF)?1:0;b.userData.g+=reduce?g-b.userData.g:(g-b.userData.g)*0.14;
+    b.scale.y=b.userData.ht*Math.max(0.001,b.userData.g);b.visible=b.userData.g>0.02;});
+  const pulse=reduce?0.5:(time*0.6)%1;ring.scale.setScalar(1+pulse*1.6);ring.material.opacity=(1-pulse)*0.9;if(starCo){ring.visible=starCo.mesh.visible;ring.position.set(starCo.mesh.position.x,starCo.mesh.position.y+0.15,starCo.mesh.position.z);}
+  const w=stage.clientWidth,h=stage.clientHeight;
+  SEGS.forEach(s=>{v.copy(s.center);v.y+=2.2;v.project(camera);s.label.style.left=((v.x+1)/2*w)+"px";s.label.style.top=((1-v.y)/2*h)+"px";
+    s.label.style.opacity=introT<2||geo?0:(a.size&&!a.has(s.id)?0.45:1);s.label.style.pointerEvents=geo?"none":"";});
+  cityLab.forEach(L=>{v.set(L.x,L.unk?2.5:1.6,L.z);v.project(camera);L.label.style.left=((v.x+1)/2*w)+"px";L.label.style.top=((1-v.y)/2*h)+"px";
+    L.label.style.opacity=introT<2||!geo?0:(cityF&&cityF!==L?0.4:(L.empty?0.55:1));L.label.style.pointerEvents=geo?"":"none";});
+  CO.forEach((c,i)=>{const special=i===sel||i===hovered||(segs.has(c.s)&&segs.size<=2)||(cityF&&cityF.cos.includes(i))||c.star||(yearF!==null&&c.y===yearF);
+    const show=c.mesh.visible&&introT>2.4&&(special||(labAll&&isOn(i,a)));
+    c.label.style.opacity=show?1:0;c.label.classList.toggle("all",show&&!special);if(!show)return;
+    v.copy(c.mesh.position);v.y+=c.mesh.scale.y+0.4;v.project(camera);c.label.style.left=((v.x+1)/2*w)+"px";c.label.style.top=((1-v.y)/2*h)+"px";});
+  renderer.render(scene,camera);requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+})();
+</script>
+
+
+
+<script async="" src="./index.html_files/ar" data-netlify-deploy-id="6ae0438237420d0c136d9a19" data-netlify-site-id="05958201-9f9b-4ad5-8826-95602006d0db" data-agent-runner-id="6ae03f0b1c1a85a7424c2ccf"></script>
+</body></html>
